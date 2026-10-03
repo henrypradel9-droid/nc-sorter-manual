@@ -99,7 +99,7 @@ Verificações reais usaram contas explicitamente autorizadas e identificadas co
 
 ## Configuração e limites
 
-Nenhuma variável nova é necessária no ambiente local. A publicação externa permanece fora desta atualização; para publicá-lo, configure `APP_ORIGIN` com a origem HTTPS correta e mantenha a secret apenas no servidor. Antes de exposição ampla à internet, configure proteção contra abuso de cadastro no provedor/infraestrutura.
+Nenhuma variável nova é necessária no ambiente local. A publicação externa foi autorizada posteriormente. O código está no repositório privado https://github.com/henrypradel9-droid/nc-sorter-manual e o projeto `nc-sorter-manual` foi criado na conta Vercel JAMSLY. A configuração da chave secreta de produção aguarda autorização específica de transferência para a Vercel. Configure `APP_ORIGIN` com a origem HTTPS correta e mantenha a secret apenas no servidor. Antes de exposição ampla à internet, configure proteção contra abuso de cadastro no provedor/infraestrutura.
 
 O advisor não apontou falhas de RLS nesta atualização. Indicou que a proteção do Supabase contra senhas vazadas está desativada: [documentação oficial](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection). Esse ajuste de Auth depende das opções disponíveis no painel/plano do projeto e não foi alterado automaticamente.
 
