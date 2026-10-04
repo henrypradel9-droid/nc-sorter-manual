@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { submitAccessRequest, manageAccessRequests } from "@/services/access-requests";
 import { ZodError, z } from "zod";
+import { passwordLengthSchema } from "@/schemas/password";
 import { authorize, checkOrigin, HttpError } from "@/lib/auth";
 import { adminDatabase, database } from "@/lib/supabase";
 import { csvCell, type Occurrence } from "@/lib/domain";
@@ -84,7 +85,7 @@ async function handle(request: Request, context: Context) {
       if (id === "password") {
         await authorize();
         const { password } = z
-          .object({ password: z.string().min(12).max(128) })
+          .object({ password: passwordLengthSchema })
           .parse(await request.json());
         const { error } = await db.auth.updateUser({ password });
         check(error);
@@ -373,6 +374,9 @@ async function handle(request: Request, context: Context) {
     }
     if (resource === "users") {
       admin();
+      const capabilities = await db.rpc("user_admin_capabilities");
+      check(capabilities.error);
+      const permissions = capabilities.data as { primary_admin_id: string; can_delete: boolean };
       if (method === "GET") {
         const page = z.coerce
           .number()
@@ -382,15 +386,28 @@ async function handle(request: Request, context: Context) {
         const { data, count, error } = await db
           .from("profiles")
           .select("*", { count: "exact" })
+          .is("deleted_at", null)
           .order("created_at", { ascending: false })
           .range((page - 1) * 25, page * 25 - 1);
         check(error);
-        return ok({ data, count });
+        return ok({ data, count, ...permissions });
+      }
+      if (method === "DELETE") {
+        if (!permissions.can_delete) throw new HttpError(403, "Somente o ADMIN primário pode excluir usuários.");
+        const input = z.object({ id: z.string().uuid(), confirmation_email: z.string().trim().email().max(254) }).strict().parse(await request.json());
+        if (input.id === permissions.primary_admin_id) throw new HttpError(409, "O ADMIN primário não pode ser excluído.");
+        const deletion = await db.rpc("delete_user_access", { target_user_id: input.id, confirmation_email: input.confirmation_email });
+        if (deletion.error?.code === "22023") throw new HttpError(400, "Digite o e-mail do usuário para confirmar a exclusão.");
+        if (deletion.error?.code === "P0002") throw new HttpError(404, "Usuário não encontrado.");
+        check(deletion.error);
+        return ok({ success: true });
       }
       if (method === "PATCH") {
         const { id: recordId, ...payload } = profileSchema.parse(
           await request.json(),
         );
+        if (recordId === permissions.primary_admin_id && (!payload.active || payload.role !== "ADMIN"))
+          throw new HttpError(409, "O ADMIN primário deve permanecer ativo e com perfil ADMIN.");
         if (
           recordId === profile.id &&
           (!payload.active || payload.role !== "ADMIN")
@@ -504,3 +521,4 @@ async function handle(request: Request, context: Context) {
 export const GET = handle;
 export const POST = handle;
 export const PATCH = handle;
+export const DELETE = handle;

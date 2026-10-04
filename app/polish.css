@@ -1,4 +1,17 @@
 /* NC SORTER: yellow and indigo from the unchanged official brand asset. */
+.users-table .user-name { display: block; font-size: .84rem; font-weight: 650; }
+.users-table .user-email { display: block; color: var(--muted-foreground); font-size: .73rem; margin-top: .2rem; }
+.primary-admin-badge { display: inline-flex; align-items: center; gap: .4rem; background: #fff4b9; color: #2d2d72; padding: .35rem .6rem; border-radius: 7px; font-size: .7rem; white-space: nowrap; font-weight: 650; }
+.user-role { color: #66667d; font-size: .7rem; font-weight: 600; }
+.user-status { display: inline-flex; align-items: center; gap: .4rem; font-size: .73rem; }
+.user-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #9292a4; }
+.user-status.active::before { background: #19836b; }
+.user-status.inactive { color: #77778d; }
+.user-actions { display: flex; justify-content: flex-end; gap: .4rem; }
+.user-actions button { min-height: 34px; font-size: .72rem; padding: .4rem .6rem; white-space: nowrap; }
+.user-actions .delete-user-button { border-color: transparent; color: #a82437; }
+.user-actions .delete-user-button:hover { background: #fff0f1; border-color: #f1c5cb; }
+button.danger-button { background: #b42338; color: white; border-color: #b42338; }
 :root { --background: #f6f6f9; --border: #e7e7ef; --radius: .8rem; }
 body { font-feature-settings: "ss01"; }
 h1, h2, h3 { text-wrap: balance; }

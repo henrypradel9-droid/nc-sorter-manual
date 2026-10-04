@@ -361,6 +361,8 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          deleted_at: string | null
+          deleted_by_user_id: string | null
           email: string
           id: string
           name: string
@@ -370,6 +372,8 @@ export type Database = {
         Insert: {
           active?: boolean
           created_at?: string
+          deleted_at?: string | null
+          deleted_by_user_id?: string | null
           email: string
           id: string
           name: string
@@ -379,13 +383,23 @@ export type Database = {
         Update: {
           active?: boolean
           created_at?: string
+          deleted_at?: string | null
+          deleted_by_user_id?: string | null
           email?: string
           id?: string
           name?: string
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_deleted_by_user_id_fkey"
+            columns: ["deleted_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shifts: {
         Row: {
@@ -466,6 +480,10 @@ export type Database = {
         }
         Returns: Json
       }
+      delete_user_access: {
+        Args: { confirmation_email: string; target_user_id: string }
+        Returns: Json
+      }
       export_occurrences: { Args: { filters?: Json }; Returns: Json }
       filtered_occurrences: {
         Args: { filters?: Json }
@@ -502,6 +520,7 @@ export type Database = {
           name: string
         }[]
       }
+      user_admin_capabilities: { Args: never; Returns: Json }
     }
     Enums: {
       alert_status: "NOVO" | "VISUALIZADO" | "ACOMPANHAMENTO_REALIZADO"

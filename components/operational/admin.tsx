@@ -1,6 +1,7 @@
 "use client";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
+import { Trash2, ShieldCheck } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -185,10 +186,27 @@ function UserEditor({
     </Dialog>
   );
 }
+function UserDeletion({ item, onClose, onDeleted }: { item: Profile; onClose: () => void; onDeleted: () => void }) {
+  const [confirmation, setConfirmation] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function remove(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setBusy(true); setError("");
+    try {
+      await api("users", "DELETE", { id: item.id, confirmation_email: confirmation.trim() });
+      toast.success("Usuário excluído. O histórico foi preservado.");
+      onDeleted();
+    } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível excluir o usuário."); }
+    finally { setBusy(false); }
+  }
+  return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}><DialogContent><DialogHeader><DialogTitle>Excluir usuário?</DialogTitle><DialogDescription><strong>{item.name}</strong> perderá o acesso e sairá da lista de usuários. As ocorrências e a auditoria serão preservadas. O acesso excluído não poderá ser reativado nesta tela.</DialogDescription></DialogHeader><form className="stack" onSubmit={remove}><p className="small muted">Para confirmar, digite <strong>{item.email}</strong>.</p><label>E-mail de confirmação<input type="email" required autoComplete="off" value={confirmation} onChange={e => setConfirmation(e.target.value)} disabled={busy} /></label>{error && <p className="error" role="alert">{error}</p>}<div className="form-actions"><button type="button" onClick={onClose} disabled={busy}>Cancelar</button><button className="danger-button" disabled={busy || confirmation.trim().toLowerCase() !== item.email.trim().toLowerCase()}><Trash2 size={16} />{busy ? "Excluindo…" : "Excluir usuário"}</button></div></form></DialogContent></Dialog>;
+}
 export function UsersPage() {
   const [page, setPage] = useState(1),
     [edit, setEdit] = useState<Profile | null | undefined>();
-  const result = useApi<{ data: Profile[]; count: number }>(
+  const [remove, setRemove] = useState<Profile | null>(null);
+  const result = useApi<{ data: Profile[]; count: number; primary_admin_id: string; can_delete: boolean }>(
     "users?page=" + page,
   );
   return (
@@ -208,16 +226,14 @@ export function UsersPage() {
         retry={result.refresh}
       />
       {result.data && (
-        <section className="panel table-panel">
+        <section className="panel table-panel users-table">
           <Table>
             <TableHeader>
               <TableRow>
                 {[
-                  "Nome",
-                  "E-mail",
+                  "Pessoa",
                   "Perfil",
                   "Situação",
-                  "Criação",
                   "Ações",
                 ].map((s) => (
                   <TableHead key={s}>{s}</TableHead>
@@ -227,13 +243,11 @@ export function UsersPage() {
             <TableBody>
               {result.data.data.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell>{p.name}</TableCell>
-                  <TableCell>{p.email}</TableCell>
-                  <TableCell>{p.role}</TableCell>
-                  <TableCell>{p.active ? "Ativo" : "Inativo"}</TableCell>
-                  <TableCell>{displayDate(p.created_at)}</TableCell>
+                  <TableCell><strong className="user-name">{p.name}</strong><span className="user-email">{p.email}</span></TableCell>
+                  <TableCell>{p.id === result.data?.primary_admin_id ? <span className="primary-admin-badge"><ShieldCheck size={14} />ADMIN primário</span> : <span className="user-role">{p.role}</span>}</TableCell>
+                  <TableCell><span className={`user-status ${p.active ? "active" : "inactive"}`}>{p.active ? "Ativo" : "Inativo"}</span></TableCell>
                   <TableCell>
-                    <button onClick={() => setEdit(p)}>Editar acesso</button>
+                    <div className="user-actions"><button onClick={() => setEdit(p)}>Editar acesso</button>{result.data?.can_delete && p.id !== result.data?.primary_admin_id && <button className="delete-user-button" title={`Excluir ${p.name}`} aria-label={`Excluir usuário ${p.name}`} onClick={() => setRemove(p)}><Trash2 size={17}/></button>}</div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -252,6 +266,7 @@ export function UsersPage() {
           }}
         />
       )}
+      {remove && <UserDeletion item={remove} onClose={() => setRemove(null)} onDeleted={() => { setRemove(null); setPage(1); result.refresh(); }} />}
     </>
   );
 }
@@ -385,7 +400,7 @@ export function AccountPage({ profile }: { profile: Profile }) {
           <input
             type="password"
             name="password"
-            minLength={12}
+            minLength={8}
             maxLength={128}
             autoComplete="new-password"
             required
@@ -396,13 +411,13 @@ export function AccountPage({ profile }: { profile: Profile }) {
           <input
             type="password"
             name="confirm"
-            minLength={12}
+            minLength={8}
             maxLength={128}
             autoComplete="new-password"
             required
           />
         </label>
-        <p className="muted small">Use pelo menos 12 caracteres.</p>
+        <p className="muted small">Use pelo menos 8 caracteres.</p>
         <button className="primary" disabled={busy}>
           {busy ? "Salvando…" : "Salvar senha"}
         </button>
