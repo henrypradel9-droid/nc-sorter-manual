@@ -4,7 +4,6 @@ import Link from "next/link";
 import { LoginForm } from "@/components/login-form";
 import { configured } from "@/lib/supabase";
 import { CheckCircle2, ScanLine, ListChecks, ShieldCheck } from "lucide-react";
-export const dynamic = "force-dynamic";
 export default function Login() {
   return (
     <main className="login">

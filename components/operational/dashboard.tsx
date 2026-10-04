@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Plus, Bell, ArrowRight, Target } from "lucide-react";
@@ -7,9 +7,11 @@ import { operationalDate } from "@/lib/domain";
 import { occurrenceLink, type DashboardData } from "@/lib/dashboard";
 import { useApi, State, Empty, type Lookups } from "./shared";
 import { DashboardFilters } from "../dashboard/filters";
-import { DashboardKpiCard, OccurrenceTrendChart, DistributionChart, BreakdownChart, OccurrenceUserRanking, OccurrenceHeatmap } from "../dashboard/charts";
+import { DashboardKpiCard, OccurrenceTrendChart, DistributionChart, BreakdownChart, OccurrenceUserRanking, OccurrenceHeatmap } from "../dashboard/lazy-charts";
+import { preloadDashboardCharts } from "../dashboard/lazy-charts";
 import { OccurrenceTable } from "./occurrence-list";
 export function Dashboard() {
+  useEffect(() => { void preloadDashboardCharts(); }, []);
   const params=useSearchParams();
   const [query,setQuery]=useState(()=> {const p=new URLSearchParams(params); const today=operationalDate(new Date()); if(!p.get("from"))p.set("from",today);if(!p.get("to"))p.set("to",today);return p.toString();});
   const result=useApi<DashboardData>("dashboard-v2?"+query,30000),lookups=useApi<Lookups>("lookups");

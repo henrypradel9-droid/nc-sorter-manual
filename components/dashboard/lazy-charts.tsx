@@ -1,0 +1,10 @@
+"use client";
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
+export const preloadDashboardCharts = () => import("./charts");
+export const DashboardKpiCard = dynamic(() => import("./charts").then(m => m.DashboardKpiCard), { loading: () => <Skeleton className="h-40 w-full" /> });
+export const OccurrenceTrendChart = dynamic(() => import("./charts").then(m => m.OccurrenceTrendChart), { loading: () => <Skeleton className="h-64 w-full" /> });
+export const DistributionChart = dynamic(() => import("./charts").then(m => m.DistributionChart), { loading: () => <Skeleton className="h-64 w-full" /> });
+export const BreakdownChart = dynamic(() => import("./charts").then(m => m.BreakdownChart), { loading: () => <Skeleton className="h-64 w-full" /> });
+export const OccurrenceUserRanking = dynamic(() => import("./charts").then(m => m.OccurrenceUserRanking), { loading: () => <Skeleton className="h-64 w-full" /> });
+export const OccurrenceHeatmap = dynamic(() => import("./charts").then(m => m.OccurrenceHeatmap), { loading: () => <Skeleton className="h-64 w-full" /> });

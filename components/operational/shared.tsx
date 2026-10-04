@@ -25,18 +25,20 @@ export async function api<T>(
   url: string,
   method = "GET",
   body?: unknown,
+  signal?: AbortSignal,
 ): Promise<T> {
   const r = await fetch("/api/" + url, {
     method,
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
     cache: "no-store",
+    signal,
   });
   const data = (await r.json()) as { error?: string };
   if (!r.ok) throw new Error(data.error ?? "Não foi possível concluir.");
   return data as T;
 }
-export function useApi<T>(url: string, refreshMs = 0) {
+export function useApi<T>(url: string, refreshMs = 0, enabled = true) {
   const [state, setState] = useState<{
     data?: T;
     error?: string;
@@ -46,10 +48,15 @@ export function useApi<T>(url: string, refreshMs = 0) {
   const [revision, setRevision] = useState(0);
   const refresh = useCallback(() => setRevision((v) => v + 1), []);
   useEffect(() => {
+    if (!enabled) return;
+    const controller = new AbortController();
     let live = true;
+    let inFlight = false;
     const load = async () => {
+      if (inFlight) return;
+      inFlight = true;
       try {
-        const data = await api<T>(url);
+        const data = await api<T>(url, "GET", undefined, controller.signal);
         if (live) setState({ data, loading: false, source: url });
       } catch (e) {
         if (live)
@@ -58,7 +65,7 @@ export function useApi<T>(url: string, refreshMs = 0) {
             loading: false,
             source: url,
           });
-      }
+      } finally { inFlight = false; }
     };
     void load();
     const timer = refreshMs
@@ -68,10 +75,11 @@ export function useApi<T>(url: string, refreshMs = 0) {
       : null;
     return () => {
       live = false;
+      controller.abort();
       if (timer) clearInterval(timer);
     };
-  }, [url, revision, refreshMs]);
-  return { ...(state.source === url ? state : { data: undefined, error: undefined, loading: true }), refresh };
+  }, [url, revision, refreshMs, enabled]);
+  return { ...(enabled && state.source === url ? state : { data: undefined, error: undefined, loading: enabled }), refresh };
 }
 export function State({
   loading,

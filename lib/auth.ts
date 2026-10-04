@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { database } from "./supabase";
 import type { Profile, Role } from "./domain";
 export class HttpError extends Error {
@@ -9,7 +10,7 @@ export class HttpError extends Error {
     super(message);
   }
 }
-export async function authorize(allowed?: Role[]) {
+const authorizedSession = cache(async () => {
   const db = await database();
   const {
     data: { user },
@@ -25,9 +26,13 @@ export async function authorize(allowed?: Role[]) {
   const profile = data as Profile | null;
   if (profileError || !profile?.active)
     throw new HttpError(403, "Seu acesso ainda não foi aprovado ou está inativo. Consulte um administrador.");
-  if (allowed && !allowed.includes(profile.role))
-    throw new HttpError(403, "Seu perfil não tem permissão para esta ação.");
   return { db, profile };
+});
+export async function authorize(allowed?: Role[]) {
+  const session = await authorizedSession();
+  if (allowed && !allowed.includes(session.profile.role))
+    throw new HttpError(403, "Seu perfil não tem permissão para esta ação.");
+  return session;
 }
 export function checkOrigin(request: Request) {
   if (!["GET", "HEAD"].includes(request.method)) {

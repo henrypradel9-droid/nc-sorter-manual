@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Plus,
@@ -32,8 +32,7 @@ import {
   SidebarInset,
 } from "@/components/ui/sidebar";
 import { Brand } from "./brand";
-import { AlertCount } from "./alert-count";
-import { AccessRequestCount } from "./access-request-count";
+import { useApi } from "./operational/shared";
 import type { Profile } from "@/lib/domain";
 import { Toaster, toast } from "sonner";
 const nav = [
@@ -75,6 +74,11 @@ export function Shell({
   const router = useRouter();
   const path = usePathname(),
     [busy, setBusy] = useState(false);
+  const counts = useApi<{ alerts: number; requests: number }>("navigation-counts", 30000, profile.role !== "OPERADOR");
+  useEffect(() => {
+    window.addEventListener("access-requests-updated", counts.refresh);
+    return () => window.removeEventListener("access-requests-updated", counts.refresh);
+  }, [counts.refresh]);
   async function logout() {
     setBusy(true);
     try {
@@ -120,8 +124,8 @@ export function Shell({
                           <Link href={href}>
                             <Icon />
                             <span>{name}</span>
-                            {href === "/alertas" && <AlertCount />}
-                            {href === "/administracao/solicitacoes" && <AccessRequestCount />}
+                            {href === "/alertas" && <MenuCount count={counts.data?.alerts} label="alertas" />}
+                            {href === "/administracao/solicitacoes" && <MenuCount count={counts.data?.requests} label="solicitações pendentes" />}
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -174,4 +178,8 @@ export function Shell({
       <Toaster richColors position="top-right" />
     </SidebarProvider>
   );
+}
+
+function MenuCount({ count, label }: { count?: number; label: string }) {
+  return count && count > 0 ? <span className="request-count" aria-label={`${count} ${label}`}>{count}</span> : null;
 }

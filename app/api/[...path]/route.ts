@@ -103,6 +103,18 @@ async function handle(request: Request, context: Context) {
         throw new HttpError(403, "Acesso reservado à administração.");
     };
     if (resource === "me" && method === "GET") return ok(profile);
+    if (resource === "navigation-counts" && method === "GET") {
+      leader();
+      const [alerts, requests] = await Promise.all([
+        db.from("alerts").select("id", { count: "exact", head: true }).eq("active", true),
+        profile.role === "ADMIN"
+          ? db.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "PENDENTE")
+          : Promise.resolve({ count: 0, error: null }),
+      ]);
+      check(alerts.error);
+      check(requests.error);
+      return ok({ alerts: alerts.count ?? 0, requests: requests.count ?? 0 });
+    }
     if (resource === "lookups" && method === "GET") {
       const results = await Promise.all(
         (["error_types", "shifts", "canalizacoes"] as const).map((table) =>
