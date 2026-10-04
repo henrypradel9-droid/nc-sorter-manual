@@ -1,4 +1,5 @@
 import { Brand } from "@/components/brand";
+import { SorterIllustration } from "@/components/sorter-illustration";
 import Link from "next/link";
 import { LoginForm } from "@/components/login-form";
 import { configured } from "@/lib/supabase";
@@ -9,7 +10,7 @@ export default function Login() {
     <main className="login">
       <section className="login-story">
         <Brand />
-        <div>
+        <div className="login-message">
           <span className="eyebrow">PRECISÃO EM CADA ETAPA</span>
           <h1>
             Sua operação.
@@ -20,6 +21,7 @@ export default function Login() {
             Registre ocorrências, acompanhe a operação e transforme informação
             em ação.
           </p>
+          <SorterIllustration />
           <div className="login-points">
             <span>
               <ScanLine />
