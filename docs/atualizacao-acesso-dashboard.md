@@ -99,7 +99,15 @@ Verificações reais usaram contas explicitamente autorizadas e identificadas co
 
 ## Configuração e limites
 
-Nenhuma variável nova é necessária no ambiente local. A publicação externa foi autorizada posteriormente. O código está no repositório privado https://github.com/henrypradel9-droid/nc-sorter-manual e o projeto `nc-sorter-manual` foi criado na conta Vercel JAMSLY. A configuração da chave secreta de produção aguarda autorização específica de transferência para a Vercel. Configure `APP_ORIGIN` com a origem HTTPS correta e mantenha a secret apenas no servidor. Antes de exposição ampla à internet, configure proteção contra abuso de cadastro no provedor/infraestrutura.
+Nenhuma variável nova é necessária no ambiente local. A publicação externa e a transferência da chave secreta foram autorizadas. O código está no repositório privado https://github.com/henrypradel9-droid/nc-sorter-manual, conectado ao projeto Vercel `nc-sorter-manual` da conta JAMSLY. O endereço de produção é https://nc-sorter-manual.vercel.app e `APP_ORIGIN` está configurado com essa origem. A `SUPABASE_SECRET_KEY` está armazenada como Secret somente de produção, usada apenas no servidor. O arquivo `.env.local` não foi enviado ao GitHub nem ao pacote de deploy. Antes de exposição ampla à internet, configure proteção contra abuso de cadastro no provedor/infraestrutura.
+
+### Publicação em 04/10/2026
+
+- Deploy de produção confirmado como READY: `dpl_EttQdxkWmJehHyokHLG5ARhuEoMN`, commit de aplicação `595bfad`, compilação em 55 segundos e funções em São Paulo (`gru1`).
+- A primeira compilação identificou uma configuração local antiga de Vite/Sites; `vite.config.ts` foi excluído da verificação TypeScript do app Next.js. A verificação TypeScript e o novo build passaram.
+- `/login`, `/solicitar-acesso` e a logo oficial responderam HTTP 200. APIs administrativas e dashboard recusaram usuários não autenticados com HTTP 401.
+- Solicitação vazia foi rejeitada com HTTP 400 e login com conta inexistente com HTTP 401, sem criar contas nem alterar os dados operacionais.
+- O login do ADMIN original foi confirmado pelo proprietário antes da publicação; sua senha não foi redefinida nem utilizada nesta verificação de produção.
 
 O advisor não apontou falhas de RLS nesta atualização. Indicou que a proteção do Supabase contra senhas vazadas está desativada: [documentação oficial](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection). Esse ajuste de Auth depende das opções disponíveis no painel/plano do projeto e não foi alterado automaticamente.
 
