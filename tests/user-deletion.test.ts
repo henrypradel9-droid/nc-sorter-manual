@@ -63,7 +63,7 @@ test("only the immutable primary administrator can delete access; history and se
     await assert.rejects(db.query('update public.profiles set active=true where id=$1',[operator]),/cannot be restored/);
     await assert.rejects(db.query('delete from public.profiles where id=$1',[operator]),/permission denied/);
     await as(operator);
-    assert.equal((await db.query('select private.current_role() role')).rows[0].role,null);
+    assert.equal((await db.query<{role:string|null}>('select private.current_role() role')).rows[0].role,null);
     assert.equal(Number((await db.query<{n:number}>('select count(*) n from public.occurrences')).rows[0].n),0);
     await assert.rejects(db.query("select public.dashboard_v2('{}','day')"),/Leader required/);
     await as(primary);
