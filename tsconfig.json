@@ -45,6 +45,7 @@
     "node_modules",
     "examples",
     "outputs",
-    "work"
+    "work",
+    "vite.config.ts"
   ]
 }
