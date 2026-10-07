@@ -33,7 +33,7 @@ export default async function Page({
   const { section } = await params;
   const [page, id] = section;
   let content;
-  if (profile.role !== "ADMIN" && !["ocorrencias", "alertas", "conta"].includes(page))
+  if (profile.role !== "ADMIN" && !["dashboard", "ocorrencias", "alertas", "conta"].includes(page))
     redirect("/ocorrencias/nova");
   if (
     profile.role !== "ADMIN" &&

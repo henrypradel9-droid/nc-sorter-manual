@@ -11,3 +11,7 @@ Migration: `20261007202413_restore_compact_menu_operator_read.sql`. Altera somen
 Validação: TypeScript, lint, build, teste PostgreSQL isolado de permissões e formulário/canalização, além de revisão de menu ADMIN/OPERADOR em navegador. A revisão usa dados fictícios e não cria ocorrências em produção.
 
 Advisors permanecem com os avisos anteriores, sem novas ocorrências: tabela privada de propriedade propositalmente sem política pública e proteção de senhas vazadas desativada. Referência: https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
+
+## Dashboard do OPERADOR
+
+Em 07/10/2026, o Dashboard também foi liberado no menu, na página e na API para OPERADOR. A função permanece SECURITY INVOKER e respeita o acesso existente às próprias ocorrências. Não libera cadastros administrativos, auditoria nem leitura/escrita de acompanhamentos do TL. Migration: `20261007204457_allow_operator_dashboard.sql`. Teste integrado confirmou os totais e registros visíveis ao OPERADOR e os bloqueios de acompanhamentos/tipos de erro.

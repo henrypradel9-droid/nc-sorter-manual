@@ -38,7 +38,7 @@ const nav = [
   {
     label: "Operação",
     items: [
-      ["Dashboard", "/dashboard", LayoutDashboard, "admin"],
+      ["Dashboard", "/dashboard", LayoutDashboard, "all"],
       ["Nova ocorrência", "/ocorrencias/nova", Plus, "all"],
       ["Todas as ocorrências", "/ocorrencias", Rows3, "all"],
       ["Alertas", "/alertas", Bell, "all"],
@@ -95,7 +95,7 @@ export function Shell({
       <Sidebar collapsible="icon">
         <SidebarHeader>
           <Link
-            href={profile.role !== "ADMIN" ? "/ocorrencias/nova" : "/dashboard"}
+            href="/dashboard"
           >
             <Brand />
           </Link>

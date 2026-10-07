@@ -105,7 +105,7 @@ async function handle(request: Request, context: Context) {
     if (profile.role !== "ADMIN" && !(
       (resource === "occurrences" && (method === "GET" || (method === "POST" && !id))) ||
       (resource === "alerts" && method === "GET" && !id) ||
-      (["lookups", "suggestions", "me"].includes(resource) && method === "GET" && !id)
+      (["lookups", "suggestions", "me", "dashboard", "dashboard-v2"].includes(resource) && method === "GET" && !id)
     )) throw new HttpError(403, "Acesso reservado à administração.");
     if (resource === "me" && method === "GET") return ok(profile);
     if (resource === "navigation-counts" && method === "GET") {
@@ -214,7 +214,6 @@ async function handle(request: Request, context: Context) {
       }
     }
     if (resource === "dashboard-v2" && method === "GET") {
-      leader();
       const { data, error } = await db.rpc("dashboard_v2", {
         filters: filtersFrom(url),
         bucket_by: z.enum(["day", "week", "month"]).parse(url.searchParams.get("grouping") || "day"),
@@ -224,7 +223,6 @@ async function handle(request: Request, context: Context) {
       return ok(data);
     }
     if (resource === "dashboard" && method === "GET") {
-      leader();
       const { data, error } = await db.rpc("dashboard", {
         filters: filtersFrom(url),
       });

@@ -64,5 +64,15 @@ test('official V2 migration, operator restrictions, text routing, history, exact
  await assert.rejects(db.query("insert into alert_follow_ups(alert_id,note) select id,'Forbidden note' from alerts limit 1"),/row-level security/);
  await as(primary);assert.equal(await n('select count(*) n from alert_follow_ups'),1);
  assert.deepEqual((await db.query('select * from profiles where id=$1',[primary])).rows[0],original);
+ await db.exec('reset role');
+ await db.exec(await readFile(new URL('../db/operator-dashboard.sql',import.meta.url),'utf8'));
+ await as(operator);
+ const operatorDashboard=(await db.query<{r:{total:number;latest:{registered_by_user_id:string}[]}}>(`select dashboard_v2('{"from":"2026-10-04","to":"2026-10-05"}','day') r`)).rows[0].r;
+ assert.equal(operatorDashboard.total,11);
+ assert(operatorDashboard.latest.every(x=>x.registered_by_user_id===operator));
+ assert.equal(await n('select count(*) n from alert_follow_ups'),0);
+ await assert.rejects(db.query("insert into error_types(name) values('Dashboard cannot create errors')"),/row-level security/);
+ await assert.rejects(db.query("insert into alert_follow_ups(alert_id,note) select id,'Still forbidden' from alerts limit 1"),/row-level security/);
+ await as(primary);assert.deepEqual((await db.query('select * from profiles where id=$1',[primary])).rows[0],original);
  }finally{await db.close();}
 });
