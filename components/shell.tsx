@@ -40,12 +40,8 @@ const nav = [
     items: [
       ["Dashboard", "/dashboard", LayoutDashboard, "admin"],
       ["Nova ocorrência", "/ocorrencias/nova", Plus, "all"],
-      ["Pendentes", "/ocorrencias?status=PENDENTE", Rows3, "admin"],
-      ["Em andamento", "/ocorrencias?status=EM_ANDAMENTO", Rows3, "admin"],
-      ["Resolvidas", "/ocorrencias?status=RESOLVIDO", Rows3, "admin"],
-      ["Todas as ocorrências", "/ocorrencias", Rows3, "admin"],
-      ["Alertas ativos", "/alertas", Bell, "admin"],
-      ["Histórico de alertas", "/alertas/historico", History, "admin"],
+      ["Todas as ocorrências", "/ocorrencias", Rows3, "all"],
+      ["Alertas", "/alertas", Bell, "all"],
       ["Relatórios", "/relatorios", ChartNoAxesCombined, "admin"],
     ],
   },
@@ -154,7 +150,7 @@ export function Shell({
             <span className="topbar-label">CENTRAL OPERACIONAL</span>
           </div>
           <div>
-            <Link className="account-link" href={profile.role === "ADMIN" ? "/conta" : "/ocorrencias/nova"}>
+            <Link className="account-link" href="/conta">
               <span className="avatar">
                 {profile.name.slice(0, 2).toUpperCase()}
               </span>

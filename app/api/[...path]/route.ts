@@ -103,8 +103,9 @@ async function handle(request: Request, context: Context) {
         throw new HttpError(403, "Acesso reservado à administração.");
     };
     if (profile.role !== "ADMIN" && !(
-      (resource === "occurrences" && method === "POST" && !id) ||
-      (["lookups", "suggestions"].includes(resource) && method === "GET" && !id)
+      (resource === "occurrences" && (method === "GET" || (method === "POST" && !id))) ||
+      (resource === "alerts" && method === "GET" && !id) ||
+      (["lookups", "suggestions", "me"].includes(resource) && method === "GET" && !id)
     )) throw new HttpError(403, "Acesso reservado à administração.");
     if (resource === "me" && method === "GET") return ok(profile);
     if (resource === "navigation-counts" && method === "GET") {
@@ -157,13 +158,13 @@ async function handle(request: Request, context: Context) {
           .eq("id", id)
           .single();
         if (error) throw new HttpError(404, "Ocorrência não encontrada.");
-        const history = await db
+        const history = profile.role === "ADMIN" ? await db
           .from("audit_logs")
           .select("*")
           .eq("entity", "occurrences")
           .eq("record_id", id)
           .order("created_at", { ascending: false })
-          .limit(100);
+          .limit(100) : {data:[],error:null};
         check(history.error);
         const pastAlerts = await db.from("alerts").select("id", {count:"exact",head:true}).eq("occurrence_user", data.occurrence_user_normalized ?? data.occurrence_user.trim().toLowerCase()).or("status.eq.ACOMPANHAMENTO_REALIZADO,active.eq.false");
         check(pastAlerts.error);
@@ -307,7 +308,7 @@ async function handle(request: Request, context: Context) {
       }
     }
     if (resource === "alerts") {
-      leader();
+      if (method !== "GET" || id) leader();
       if (method === "GET" && id) {
         z.string().uuid().parse(id);
         const [alert, notes] = await Promise.all([
@@ -327,11 +328,11 @@ async function handle(request: Request, context: Context) {
         alertParams.searchParams.delete("status");
         const f = filtersFrom(alertParams);
         const history = url.searchParams.get("history") === "true";
-        const responsible = url.searchParams.get("responsible");
+        const responsible = profile.role === "ADMIN" ? url.searchParams.get("responsible") : null;
         const alertStatus = url.searchParams.get("status");
         let q = db
           .from("alerts")
-          .select(responsible ? "*,follow_ups:alert_follow_ups!inner(*,responsible:profiles!responsible_user_id(name))" : "*,follow_ups:alert_follow_ups(*,responsible:profiles!responsible_user_id(name))", { count: "exact" })
+          .select(profile.role !== "ADMIN" ? "*" : responsible ? "*,follow_ups:alert_follow_ups!inner(*,responsible:profiles!responsible_user_id(name))" : "*,follow_ups:alert_follow_ups(*,responsible:profiles!responsible_user_id(name))", { count: "exact" })
           .order("period_start", { ascending: false });
         if (!history) q = q.eq("active", true).in("status", ["NOVO", "VISUALIZADO"]);
         else q = q.or("status.eq.ACOMPANHAMENTO_REALIZADO,active.eq.false");

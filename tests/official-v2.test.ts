@@ -53,5 +53,16 @@ test('official V2 migration, operator restrictions, text routing, history, exact
  await db.query("update profiles set role='ADMIN' where id=$1",[legacy]);assert.equal(await n("select count(*) n from audit_logs where action='USER_ROLE_CHANGED'"),1);
  assert.deepEqual((await db.query('select * from profiles where id=$1',[primary])).rows[0],original);
  await db.exec('reset role');await assert.rejects(db.query("insert into auth.users values(gen_random_uuid(),'newleader@example.test',$1)",[JSON.stringify({nc_access_request:true,name:'New Leader',username:'newleader',requested_role:'LIDER'})]),/Invalid requested role/);
+ await db.exec(await readFile(new URL('../db/compact-menu-operator-read.sql',import.meta.url),'utf8'));
+ await as(operator);
+ assert.equal(await n('select count(*) n from occurrences'),11);
+ assert.equal(await n("select count(*) n from filtered_occurrences('{}')"),11);
+ assert.equal(await n('select count(*) n from alerts'),3);
+ assert.equal(await n('select count(*) n from alert_follow_ups'),0);
+ assert.equal(await n('select count(*) n from audit_logs'),0);
+ await assert.rejects(db.query("insert into error_types(name) values('Still denied')"),/row-level security/);
+ await assert.rejects(db.query("insert into alert_follow_ups(alert_id,note) select id,'Forbidden note' from alerts limit 1"),/row-level security/);
+ await as(primary);assert.equal(await n('select count(*) n from alert_follow_ups'),1);
+ assert.deepEqual((await db.query('select * from profiles where id=$1',[primary])).rows[0],original);
  }finally{await db.close();}
 });

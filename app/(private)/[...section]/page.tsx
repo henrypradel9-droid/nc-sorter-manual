@@ -33,7 +33,7 @@ export default async function Page({
   const { section } = await params;
   const [page, id] = section;
   let content;
-  if (profile.role !== "ADMIN" && !(page === "ocorrencias" && id === "nova"))
+  if (profile.role !== "ADMIN" && !["ocorrencias", "alertas", "conta"].includes(page))
     redirect("/ocorrencias/nova");
   if (
     profile.role !== "ADMIN" &&
@@ -70,7 +70,7 @@ export default async function Page({
       content = <OccurrenceList report />;
       break;
     case "alertas":
-      content = <Alerts key={id ?? "ativos"} historyMode={id === "historico"} />;
+      content = <Alerts key={id ?? "ativos"} historyMode={id === "historico"} canManage={profile.role === "ADMIN"} />;
       break;
     case "cadastros":
       if (!catalogNames[id]) notFound();

@@ -152,7 +152,7 @@ export function OccurrenceForm({
           >
             Registrar outra
           </button>
-          {role === "ADMIN" && <Link className="button" href={"/ocorrencias/" + id}>
+          {<Link className="button" href={"/ocorrencias/" + id}>
             Ver ocorrência
           </Link>}
         </div>
@@ -327,7 +327,7 @@ export function OccurrenceForm({
             </p>
           )}
           <div className="form-actions">
-            {role === "ADMIN" && <Link className="button" href="/ocorrencias">
+            {<Link className="button" href="/ocorrencias">
               Voltar à central
             </Link>}
             <button className="primary" disabled={busy || !lookups.data}>
@@ -417,8 +417,8 @@ export function OccurrenceDetail({ id, role }: { id: string; role: Role }) {
             </dl>
           </section>
         ))}
-      {!!result.data?.alert_count && <Link className="button mt-5" href={"/alertas/historico?occurrence_user="+encodeURIComponent(o?.occurrence_user_normalized??"")}>Histórico de alertas: {result.data.alert_count}</Link>}
-      {result.data && (
+      {role === "ADMIN" && !!result.data?.alert_count && <Link className="button mt-5" href={"/alertas/historico?occurrence_user="+encodeURIComponent(o?.occurrence_user_normalized??"")}>Histórico de alertas: {result.data.alert_count}</Link>}
+      {role === "ADMIN" && result.data && (
         <section className="panel mt-5">
           <h2>Histórico de alterações</h2>
           <p className="muted small">Últimas 100 alterações deste registro.</p>
