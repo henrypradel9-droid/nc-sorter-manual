@@ -95,18 +95,22 @@ async function handle(request: Request, context: Context) {
     }
     const { db, profile } = await authorize();
     const leader = () => {
-      if (profile.role === "OPERADOR")
+      if (profile.role !== "ADMIN")
         throw new HttpError(403, "Acesso reservado à liderança.");
     };
     const admin = () => {
       if (profile.role !== "ADMIN")
         throw new HttpError(403, "Acesso reservado à administração.");
     };
+    if (profile.role !== "ADMIN" && !(
+      (resource === "occurrences" && method === "POST" && !id) ||
+      (["lookups", "suggestions"].includes(resource) && method === "GET" && !id)
+    )) throw new HttpError(403, "Acesso reservado à administração.");
     if (resource === "me" && method === "GET") return ok(profile);
     if (resource === "navigation-counts" && method === "GET") {
       leader();
       const [alerts, requests] = await Promise.all([
-        db.from("alerts").select("id", { count: "exact", head: true }).eq("active", true),
+        db.from("alerts").select("id", { count: "exact", head: true }).eq("active", true).in("status", ["NOVO", "VISUALIZADO"]),
         profile.role === "ADMIN"
           ? db.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "PENDENTE")
           : Promise.resolve({ count: 0, error: null }),
@@ -117,25 +121,25 @@ async function handle(request: Request, context: Context) {
     }
     if (resource === "lookups" && method === "GET") {
       const results = await Promise.all(
-        (["error_types", "shifts", "canalizacoes"] as const).map((table) =>
-          db.from(table).select("*").order("name"),
+        (["error_types", "shifts"] as const).map((table) =>
+          profile.role === "ADMIN" ? db.from(table).select("*").order("name") : db.from(table).select("*").eq("active",true).order("name"),
         ),
       );
       results.forEach((r) => check(r.error));
-      const people = await db
+      const people = profile.role === "ADMIN" ? await db
         .from("profiles")
         .select("id,name")
-        .eq("active", true)
-        .order("name");
+        .order("name") : {data:[],error:null};
       check(people.error);
       return ok({
         error_types: results[0].data,
         shifts: results[1].data,
-        canalizacoes: results[2].data,
+        canalizacoes: [],
         profiles: people.data,
       });
     }
     if (resource === "suggestions" && method === "GET") {
+      if (profile.role !== "ADMIN") return ok([]);
       const prefix = z
         .string()
         .max(100)
@@ -161,7 +165,9 @@ async function handle(request: Request, context: Context) {
           .order("created_at", { ascending: false })
           .limit(100);
         check(history.error);
-        return ok({ occurrence: data, history: history.data });
+        const pastAlerts = await db.from("alerts").select("id", {count:"exact",head:true}).eq("occurrence_user", data.occurrence_user_normalized ?? data.occurrence_user.trim().toLowerCase()).or("status.eq.ACOMPANHAMENTO_REALIZADO,active.eq.false");
+        check(pastAlerts.error);
+        return ok({ occurrence: data, history: history.data, alert_count: pastAlerts.count ?? 0 });
       }
       if (method === "GET") {
         const filters = filtersFrom(url);
@@ -196,22 +202,14 @@ async function handle(request: Request, context: Context) {
             );
           return ok(data);
         }
-        const { data, error } = await db
-          .from("occurrences")
-          .insert(payload)
-          .select("id")
-          .single();
+        const { error } = await db.from("occurrences").insert(payload);
         if (error?.code === "23505") {
-          const existing = await db
-            .from("occurrences")
-            .select("id,registered_by_user_id")
-            .eq("id", input.id)
-            .maybeSingle();
-          if (existing.data?.registered_by_user_id === profile.id)
+          const existing = await db.rpc("occurrence_receipt", {record_id: input.id});
+          if (existing.data === true)
             return ok({ id: input.id, replayed: true });
         }
         check(error);
-        return ok(data, 201);
+        return ok({id:input.id}, 201);
       }
     }
     if (resource === "dashboard-v2" && method === "GET") {
@@ -266,7 +264,7 @@ async function handle(request: Request, context: Context) {
           o.occurrence_user,
           o.error_type?.name,
           o.shift?.name,
-          o.canalizacao?.name,
+          o.canalizacao,
           o.package_quantity,
           o.status,
           o.registered_by?.name,
@@ -286,7 +284,7 @@ async function handle(request: Request, context: Context) {
     }
     if (resource === "catalogs") {
       leader();
-      const table = z.enum(["error_types", "shifts", "canalizacoes"]).parse(id);
+      const table = z.enum(["error_types", "shifts"]).parse(id);
       if (method === "GET") {
         const { data, error } = await db.from(table).select("*").order("name");
         check(error);
@@ -325,13 +323,21 @@ async function handle(request: Request, context: Context) {
         return ok({ alert: alert.data, notes: notes.data });
       }
       if (method === "GET") {
-        const f = filtersFrom(url);
+        const alertParams = new URL(url);
+        alertParams.searchParams.delete("status");
+        const f = filtersFrom(alertParams);
+        const history = url.searchParams.get("history") === "true";
+        const responsible = url.searchParams.get("responsible");
+        const alertStatus = url.searchParams.get("status");
         let q = db
           .from("alerts")
-          .select("*", { count: "exact" })
+          .select(responsible ? "*,follow_ups:alert_follow_ups!inner(*,responsible:profiles!responsible_user_id(name))" : "*,follow_ups:alert_follow_ups(*,responsible:profiles!responsible_user_id(name))", { count: "exact" })
           .order("period_start", { ascending: false });
-        if (url.searchParams.get("history") !== "true")
-          q = q.eq("active", true);
+        if (!history) q = q.eq("active", true).in("status", ["NOVO", "VISUALIZADO"]);
+        else q = q.or("status.eq.ACOMPANHAMENTO_REALIZADO,active.eq.false");
+        if (f.occurrence_user) q = q.eq("occurrence_user", f.occurrence_user.trim().toLowerCase());
+        if (responsible) q = q.eq("follow_ups.responsible_user_id", z.string().uuid().parse(responsible));
+        if (alertStatus) q = q.eq("status", z.enum(["NOVO","VISUALIZADO","ACOMPANHAMENTO_REALIZADO"]).parse(alertStatus));
         if (f.from) q = q.gte("last_occurrence", f.from + "T00:00:00-03:00");
         if (f.to) q = q.lte("last_occurrence", f.to + "T23:59:59.999-03:00");
         const { data, error, count } = await q.range(

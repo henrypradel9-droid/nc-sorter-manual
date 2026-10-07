@@ -1,6 +1,6 @@
 export const statuses = ["PENDENTE", "EM_ANDAMENTO", "RESOLVIDO"] as const;
-export const roles = ["ADMIN", "LIDER", "OPERADOR"] as const;
-export type Role = (typeof roles)[number];
+export const roles = ["ADMIN", "OPERADOR"] as const;
+export type Role = (typeof roles)[number] | "LIDER";
 export type Status = (typeof statuses)[number];
 export const statusLabels: Record<Status, string> = {
   PENDENTE: "Pendente",
@@ -59,7 +59,7 @@ export type Occurrence = {
   package_quantity: number;
   error_type_id: string;
   shift_id: string;
-  canalizacao_id: string;
+  canalizacao_id: string | null;
   status: Status;
   tt: string | null;
   observations: string | null;
@@ -69,7 +69,7 @@ export type Occurrence = {
   version: number;
   error_type: Catalog;
   shift: Catalog;
-  canalizacao: Catalog;
+  canalizacao: string;
   registered_by: Pick<Profile, "name">;
 };
 export type Audit = {
@@ -93,6 +93,8 @@ export type Alert = {
   shifts: string[];
   status: "NOVO" | "VISUALIZADO" | "ACOMPANHAMENTO_REALIZADO";
   active: boolean;
+  created_at: string;
+  follow_ups?: (FollowUp & { responsible_user_id: string })[];
 };
 export type FollowUp = {
   id: string;
@@ -104,5 +106,4 @@ export type FollowUp = {
 export const catalogNames: Record<string, string> = {
   error_types: "Tipos de erro",
   shifts: "Turnos",
-  canalizacoes: "Canalizações",
 };

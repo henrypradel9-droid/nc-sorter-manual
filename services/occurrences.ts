@@ -2,7 +2,7 @@ import "server-only";
 import { filterSchema } from "@/schemas";
 import type { database } from "@/lib/supabase";
 export const occurrenceSelect =
-  "*,error_type:error_types(*),shift:shifts(*),canalizacao:canalizacoes(*),registered_by:profiles!registered_by_user_id(name)";
+  "*,error_type:error_types(*),shift:shifts(*),registered_by:profiles!registered_by_user_id(name)";
 export function filtersFrom(url: URL) {
   const values = Object.fromEntries(
     [...url.searchParams].filter(([, value]) => value !== ""),

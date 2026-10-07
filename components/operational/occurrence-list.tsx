@@ -60,7 +60,7 @@ export function OccurrenceTable({ rows }: { rows: Occurrence[] }) {
             </TableCell>
             <TableCell>{o.error_type?.name}</TableCell>
             <TableCell>{o.shift?.name}</TableCell>
-            <TableCell>{o.canalizacao?.name}</TableCell>
+            <TableCell>{o.canalizacao}</TableCell>
             <TableCell>{o.package_quantity}</TableCell>
             <TableCell>
               <StatusBadge status={o.status} />

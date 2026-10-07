@@ -22,7 +22,7 @@ type Values = {
   package_quantity: string;
   error_type_id: string;
   shift_id: string;
-  canalizacao_id: string;
+  canalizacao: string;
   status: string;
   tt: string;
   observations: string;
@@ -48,7 +48,7 @@ function initial(item?: Occurrence): Values {
     package_quantity: String(item?.package_quantity ?? 1),
     error_type_id: item?.error_type_id ?? "",
     shift_id: item?.shift_id ?? "",
-    canalizacao_id: item?.canalizacao_id ?? "",
+    canalizacao: item?.canalizacao ?? "",
     status: item?.status ?? "PENDENTE",
     tt: item?.tt ?? "",
     observations: item?.observations ?? "",
@@ -96,8 +96,8 @@ export function OccurrenceForm({
     e.preventDefault();
     if (busy) return;
     setError("");
-    if (!values.error_type_id || !values.shift_id || !values.canalizacao_id) {
-      setError("Selecione tipo de erro, turno e canalização.");
+    if (!values.error_type_id || !values.shift_id || !values.canalizacao) {
+      setError("Selecione o tipo de erro e o turno e digite a canalização.");
       return;
     }
     setBusy(true);
@@ -143,7 +143,7 @@ export function OccurrenceForm({
               const next = initial();
               if (keep) {
                 next.shift_id = values.shift_id;
-                next.canalizacao_id = values.canalizacao_id;
+                next.canalizacao = values.canalizacao;
               }
               setValues(next);
               setId(crypto.randomUUID());
@@ -152,9 +152,9 @@ export function OccurrenceForm({
           >
             Registrar outra
           </button>
-          <Link className="button" href={"/ocorrencias/" + id}>
+          {role === "ADMIN" && <Link className="button" href={"/ocorrencias/" + id}>
             Ver ocorrência
-          </Link>
+          </Link>}
         </div>
       </div>
     );
@@ -259,7 +259,7 @@ export function OccurrenceForm({
                 onChange={(v) => change("error_type_id", v)}
                 required
               />
-              {role !== "OPERADOR" && (
+              {role === "ADMIN" && (
                 <button
                   type="button"
                   className="mt-2"
@@ -277,16 +277,7 @@ export function OccurrenceForm({
               onChange={(v) => change("shift_id", v)}
               required
             />
-            <Pick
-              label="Canalização *"
-              value={values.canalizacao_id}
-              options={options(
-                lookups.data?.canalizacoes ?? [],
-                values.canalizacao_id,
-              )}
-              onChange={(v) => change("canalizacao_id", v)}
-              required
-            />
+            <label>Canalização *<input required maxLength={150} value={values.canalizacao} onChange={e => change("canalizacao", e.target.value)} placeholder="Digite a canalização" /></label>
             <Pick
               label="Status *"
               value={values.status}
@@ -312,11 +303,12 @@ export function OccurrenceForm({
             </label>
             <label className="wide">
               Observações
+              {errors.find(x => x.id === values.error_type_id)?.name.trim().toLowerCase() === "outro" && <strong className="notice">Descreva o tipo de erro encontrado.</strong>}
               <textarea
                 maxLength={4000}
                 value={values.observations}
                 onChange={(e) => change("observations", e.target.value)}
-                placeholder="Descreva o contexto necessário para o acompanhamento."
+                placeholder={errors.find(x => x.id === values.error_type_id)?.name.trim().toLowerCase() === "outro" ? "Descreva o tipo de erro encontrado." : "Descreva o contexto necessário para o acompanhamento."}
               />
             </label>
           </div>
@@ -335,9 +327,9 @@ export function OccurrenceForm({
             </p>
           )}
           <div className="form-actions">
-            <Link className="button" href="/ocorrencias">
+            {role === "ADMIN" && <Link className="button" href="/ocorrencias">
               Voltar à central
-            </Link>
+            </Link>}
             <button className="primary" disabled={busy || !lookups.data}>
               {busy
                 ? "Salvando…"
@@ -364,7 +356,7 @@ export function OccurrenceForm({
   );
 }
 export function OccurrenceDetail({ id, role }: { id: string; role: Role }) {
-  const result = useApi<{ occurrence: Occurrence; history: Audit[] }>(
+  const result = useApi<{ occurrence: Occurrence; history: Audit[]; alert_count: number }>(
       "occurrences/" + id,
     ),
     [editing, setEditing] = useState(false);
@@ -376,7 +368,7 @@ export function OccurrenceDetail({ id, role }: { id: string; role: Role }) {
           <h1>Detalhes da ocorrência</h1>
           <p>Dados do registro e histórico de alterações.</p>
         </div>
-        {role !== "OPERADOR" && (
+        {role === "ADMIN" && (
           <button onClick={() => setEditing((v) => !v)}>
             {editing ? "Cancelar edição" : "Editar ocorrência"}
           </button>
@@ -408,7 +400,7 @@ export function OccurrenceDetail({ id, role }: { id: string; role: Role }) {
                 Usuário: o.occurrence_user,
                 "Tipo de erro": o.error_type?.name,
                 Turno: o.shift?.name,
-                Canalização: o.canalizacao?.name,
+                Canalização: o.canalizacao,
                 Quantidade: o.package_quantity,
                 Status: statusLabels[o.status],
                 TT: o.tt || "—",
@@ -425,6 +417,7 @@ export function OccurrenceDetail({ id, role }: { id: string; role: Role }) {
             </dl>
           </section>
         ))}
+      {!!result.data?.alert_count && <Link className="button mt-5" href={"/alertas/historico?occurrence_user="+encodeURIComponent(o?.occurrence_user_normalized??"")}>Histórico de alertas: {result.data.alert_count}</Link>}
       {result.data && (
         <section className="panel mt-5">
           <h2>Histórico de alterações</h2>

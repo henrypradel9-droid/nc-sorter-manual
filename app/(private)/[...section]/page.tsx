@@ -33,13 +33,13 @@ export default async function Page({
   const { section } = await params;
   const [page, id] = section;
   let content;
-  if (profile.role === "OPERADOR" && !["ocorrencias", "conta"].includes(page))
-    redirect("/ocorrencias");
+  if (profile.role !== "ADMIN" && !(page === "ocorrencias" && id === "nova"))
+    redirect("/ocorrencias/nova");
   if (
     profile.role !== "ADMIN" &&
     ["usuarios", "auditoria", "configuracoes", "administracao"].includes(page)
   )
-    redirect("/ocorrencias");
+    redirect("/ocorrencias/nova");
   switch (page) {
     case "administracao":
       if (id !== "solicitacoes") notFound();
@@ -70,7 +70,7 @@ export default async function Page({
       content = <OccurrenceList report />;
       break;
     case "alertas":
-      content = <Alerts />;
+      content = <Alerts key={id ?? "ativos"} historyMode={id === "historico"} />;
       break;
     case "cadastros":
       if (!catalogNames[id]) notFound();

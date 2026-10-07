@@ -270,7 +270,9 @@ export type Database = {
       }
       occurrences: {
         Row: {
-          canalizacao_id: string
+          canalizacao: string | null
+          canalizacao_id: string | null
+          canalizacao_normalized: string | null
           created_at: string
           error_type_id: string
           hu: string
@@ -289,7 +291,9 @@ export type Database = {
           version: number
         }
         Insert: {
-          canalizacao_id: string
+          canalizacao?: string | null
+          canalizacao_id?: string | null
+          canalizacao_normalized?: string | null
           created_at?: string
           error_type_id: string
           hu?: string
@@ -308,7 +312,9 @@ export type Database = {
           version?: number
         }
         Update: {
-          canalizacao_id?: string
+          canalizacao?: string | null
+          canalizacao_id?: string | null
+          canalizacao_normalized?: string | null
           created_at?: string
           error_type_id?: string
           hu?: string
@@ -466,6 +472,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_jpradel_tests: { Args: { confirmation: string }; Returns: Json }
       dashboard: { Args: { filters?: Json }; Returns: Json }
       dashboard_v2: {
         Args: { bucket_by?: string; filters?: Json }
@@ -488,7 +495,9 @@ export type Database = {
       filtered_occurrences: {
         Args: { filters?: Json }
         Returns: {
-          canalizacao_id: string
+          canalizacao: string | null
+          canalizacao_id: string | null
+          canalizacao_normalized: string | null
           created_at: string
           error_type_id: string
           hu: string
@@ -514,6 +523,8 @@ export type Database = {
         }
       }
       normalize_user: { Args: { value: string }; Returns: string }
+      occurrence_receipt: { Args: { record_id: string }; Returns: boolean }
+      prepare_official_v2: { Args: never; Returns: Json }
       suggest_users: {
         Args: { prefix: string }
         Returns: {

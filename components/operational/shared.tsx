@@ -259,7 +259,7 @@ export function Filters({
       <label className="search">
         Busca
         <input
-          placeholder="Package ID, HU ou Usuário"
+          placeholder="Package ID, HU, Usuário ou Canalização"
           value={draft.q ?? ""}
           onChange={(e) => change("q", e.target.value)}
         />
@@ -288,7 +288,7 @@ export function Filters({
           placeholder="Usuário exato"
         />
       </label>
-      {(["error_types", "shifts", "canalizacoes"] as const).map((table, i) => (
+      {(["error_types", "shifts"] as const).map((table, i) => (
         <Pick
           key={table}
           label={["Tipo de erro", "Turno", "Canalização"][i]}
@@ -302,6 +302,7 @@ export function Filters({
           all="Todos"
         />
       ))}
+      <label>Canalização<input value={draft.canalizacao ?? ""} maxLength={150} onChange={e=>change("canalizacao",e.target.value)} placeholder="Todas ou canalização exata" /></label>
       <Pick
         label="Status"
         value={draft.status ?? ""}

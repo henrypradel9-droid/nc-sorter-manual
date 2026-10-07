@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { passwordLengthSchema } from "./password.ts";
 
-export const publicRole = z.enum(["OPERADOR", "LIDER"]);
+export const publicRole = z.enum(["OPERADOR"]);
 export const accessRequestSchema = z.object({
   name: z.string().trim().min(3).max(150),
   email: z.string().trim().toLowerCase().email().max(254),

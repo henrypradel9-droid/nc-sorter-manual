@@ -11,7 +11,6 @@ import {
   ChartNoAxesCombined,
   Tags,
   Clock3,
-  Route,
   Users,
   History,
   Settings,
@@ -39,19 +38,22 @@ const nav = [
   {
     label: "Operação",
     items: [
-      ["Dashboard", "/dashboard", LayoutDashboard, "leader"],
+      ["Dashboard", "/dashboard", LayoutDashboard, "admin"],
       ["Nova ocorrência", "/ocorrencias/nova", Plus, "all"],
-      ["Todas as ocorrências", "/ocorrencias", Rows3, "all"],
-      ["Alertas", "/alertas", Bell, "leader"],
-      ["Relatórios", "/relatorios", ChartNoAxesCombined, "leader"],
+      ["Pendentes", "/ocorrencias?status=PENDENTE", Rows3, "admin"],
+      ["Em andamento", "/ocorrencias?status=EM_ANDAMENTO", Rows3, "admin"],
+      ["Resolvidas", "/ocorrencias?status=RESOLVIDO", Rows3, "admin"],
+      ["Todas as ocorrências", "/ocorrencias", Rows3, "admin"],
+      ["Alertas ativos", "/alertas", Bell, "admin"],
+      ["Histórico de alertas", "/alertas/historico", History, "admin"],
+      ["Relatórios", "/relatorios", ChartNoAxesCombined, "admin"],
     ],
   },
   {
     label: "Cadastros",
     items: [
-      ["Tipos de erro", "/cadastros/error_types", Tags, "leader"],
-      ["Turnos", "/cadastros/shifts", Clock3, "leader"],
-      ["Canalizações", "/cadastros/canalizacoes", Route, "leader"],
+      ["Tipos de erro", "/cadastros/error_types", Tags, "admin"],
+      ["Turnos", "/cadastros/shifts", Clock3, "admin"],
     ],
   },
   {
@@ -74,10 +76,11 @@ export function Shell({
   const router = useRouter();
   const path = usePathname(),
     [busy, setBusy] = useState(false);
-  const counts = useApi<{ alerts: number; requests: number }>("navigation-counts", 30000, profile.role !== "OPERADOR");
+  const counts = useApi<{ alerts: number; requests: number }>("navigation-counts", 30000, profile.role === "ADMIN");
   useEffect(() => {
     window.addEventListener("access-requests-updated", counts.refresh);
-    return () => window.removeEventListener("access-requests-updated", counts.refresh);
+    window.addEventListener("alerts-updated", counts.refresh);
+    return () => { window.removeEventListener("access-requests-updated", counts.refresh); window.removeEventListener("alerts-updated", counts.refresh); };
   }, [counts.refresh]);
   async function logout() {
     setBusy(true);
@@ -96,7 +99,7 @@ export function Shell({
       <Sidebar collapsible="icon">
         <SidebarHeader>
           <Link
-            href={profile.role === "OPERADOR" ? "/ocorrencias" : "/dashboard"}
+            href={profile.role !== "ADMIN" ? "/ocorrencias/nova" : "/dashboard"}
           >
             <Brand />
           </Link>
@@ -106,7 +109,7 @@ export function Shell({
             const items = group.items.filter(
               (i) =>
                 i[3] === "all" ||
-                (i[3] === "leader" && profile.role !== "OPERADOR") ||
+                (i[3] === "admin" && profile.role === "ADMIN") ||
                 profile.role === "ADMIN",
             );
             return (
@@ -151,13 +154,13 @@ export function Shell({
             <span className="topbar-label">CENTRAL OPERACIONAL</span>
           </div>
           <div>
-            <Link className="account-link" href="/conta">
+            <Link className="account-link" href={profile.role === "ADMIN" ? "/conta" : "/ocorrencias/nova"}>
               <span className="avatar">
                 {profile.name.slice(0, 2).toUpperCase()}
               </span>
               <span>
                 {profile.name}
-                <small>{profile.role}</small>
+                <small>{profile.role === "ADMIN" ? "ADMIN" : "OPERADOR"}</small>
               </span>
             </Link>
             <button

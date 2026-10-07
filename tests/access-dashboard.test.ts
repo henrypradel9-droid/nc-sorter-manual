@@ -17,7 +17,7 @@ test("dashboard navigation preserves filters and comparison handles zero baselin
 test("public registration rejects ADMIN, unknown fields, weak or mismatched passwords", () => {
   const valid = { name: "Pessoa teste", email: "PESSOA@example.test", username: "Pessoa.Teste", password: "StrongTest123!", confirm_password: "StrongTest123!", requested_role: "OPERADOR" };
   assert.equal(accessRequestSchema.parse(valid).username, "pessoa.teste");
-  assert.equal(accessRequestSchema.safeParse({ ...valid, requested_role: "LIDER" }).success, true);
+  assert.equal(accessRequestSchema.safeParse({ ...valid, requested_role: "LIDER" }).success, false);
   for (const change of [{ requested_role: "ADMIN" }, { role: "ADMIN" }, { password: "fraca" }, { confirm_password: "diferente" }]) assert.equal(accessRequestSchema.safeParse({ ...valid, ...change }).success, false);
 });
 

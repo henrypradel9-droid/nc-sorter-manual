@@ -22,7 +22,7 @@ export function AccessRequestForm() {
     <label>Usuário *<input name="username" required minLength={3} maxLength={50} pattern="[a-zA-Z0-9._\-]+" autoComplete="username" /><small className="muted">Seu identificador de conta. Não altera o usuário informado nas ocorrências.</small></label>
     <label>Senha *<input name="password" type="password" required minLength={8} maxLength={128} autoComplete="new-password" /><small className="muted">Pelo menos 8 caracteres, com maiúscula, minúscula e número.</small></label>
     <label>Confirmar senha *<input name="confirm_password" type="password" required minLength={8} maxLength={128} autoComplete="new-password" /></label>
-    <label>Função desejada *<select name="requested_role" required defaultValue="OPERADOR"><option value="OPERADOR">OPERADOR</option><option value="LIDER">LIDER</option></select></label>
+    <input type="hidden" name="requested_role" value="OPERADOR" /><p className="muted small">O acesso inicial será como OPERADOR.</p>
     {error && <div className="error" role="alert">{error}</div>}
     <button className="primary large" disabled={busy}>{busy ? "Enviando…" : "Solicitar acesso"}</button>
     <Link className="button" href="/login">Já tenho acesso — entrar</Link>
