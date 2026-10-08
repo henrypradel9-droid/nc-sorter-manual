@@ -15,3 +15,9 @@ Advisors permanecem com os avisos anteriores, sem novas ocorrências: tabela pri
 ## Dashboard do OPERADOR
 
 Em 07/10/2026, o Dashboard também foi liberado no menu, na página e na API para OPERADOR. A função permanece SECURITY INVOKER e respeita o acesso existente às próprias ocorrências. Não libera cadastros administrativos, auditoria nem leitura/escrita de acompanhamentos do TL. Migration: `20261007204457_allow_operator_dashboard.sql`. Teste integrado confirmou os totais e registros visíveis ao OPERADOR e os bloqueios de acompanhamentos/tipos de erro.
+
+## Correção dos dados históricos no Dashboard
+
+Em 08/10/2026, concluída a correção iniciada em 07/10: OPERADOR consulta as ocorrências da operação, inclusive registros anteriores feitos pelo ADMIN. O filtro por autor não limita mais a leitura operacional. Perfis completos, auditoria e acompanhamentos do TL permanecem restritos. A lista recente usa LEFT JOIN nos perfis para não descartar ocorrências quando o autor não pode ser consultado. Cadastros inativos podem ser lidos para compor indicadores históricos, sem liberar criação ou edição.
+
+Migration incremental: `20261007205410_operator_shared_operational_dashboard.sql`. Nenhuma ocorrência foi criada, excluída ou restaurada. Teste integrado comprova totais compartilhados, registros anteriores de outro autor e manutenção dos bloqueios de acompanhamento/auditoria/cadastro.

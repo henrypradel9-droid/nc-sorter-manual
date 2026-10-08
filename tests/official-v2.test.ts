@@ -74,5 +74,18 @@ test('official V2 migration, operator restrictions, text routing, history, exact
  await assert.rejects(db.query("insert into error_types(name) values('Dashboard cannot create errors')"),/row-level security/);
  await assert.rejects(db.query("insert into alert_follow_ups(alert_id,note) select id,'Still forbidden' from alerts limit 1"),/row-level security/);
  await as(primary);assert.deepEqual((await db.query('select * from profiles where id=$1',[primary])).rows[0],original);
+ await db.exec('reset role');
+ await db.exec(await readFile(new URL('../db/operator-shared-dashboard.sql',import.meta.url),'utf8'));
+ await as(operator);
+ const shared=(await db.query<{r:{total:number;latest:{registered_by_user_id:string}[]}}>(`select dashboard_v2('{"from":"2026-10-01","to":"2026-10-06"}','day') r`)).rows[0].r;
+ assert.equal(shared.total,17);
+ assert.equal(await n("select count(*) n from filtered_occurrences('{}')"),17);
+ const existing=(await db.query<{r:{total:number;latest:unknown[]}}>(`select dashboard_v2('{"from":"2026-10-03","to":"2026-10-03"}','day') r`)).rows[0].r;
+ assert.equal(existing.total,6);assert.equal(existing.latest.length,6);
+ assert.equal(await n('select count(*) n from alert_follow_ups'),0);
+ assert.equal(await n('select count(*) n from audit_logs'),0);
+ assert.equal(await n('select count(*) n from profiles'),1);
+ await assert.rejects(db.query("insert into error_types(name) values('Shared view not admin')"),/row-level security/);
+ await assert.rejects(db.query("insert into alert_follow_ups(alert_id,note) select id,'Private TL' from alerts limit 1"),/row-level security/);
  }finally{await db.close();}
 });
