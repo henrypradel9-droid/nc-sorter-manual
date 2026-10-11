@@ -17,9 +17,10 @@ export function LoginForm({ configured }: { configured: boolean }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(Object.fromEntries(form)),
       });
-      const data = (await r.json()) as { error?: string };
+      const data = (await r.json()) as { error?: string; redirect?: string };
       if (!r.ok) throw new Error(data.error);
-      router.replace("/dashboard");
+      router.replace(data.redirect === "/conta" ? "/conta" : "/dashboard");
+      router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível entrar.");
       setBusy(false);
@@ -68,6 +69,9 @@ export function LoginForm({ configured }: { configured: boolean }) {
         )}
         Entrar no NC SORTER
       </button>
+      <p className="muted small">
+        Esqueceu sua senha? Peça uma senha temporária a um administrador autorizado. Não é necessário receber e-mail.
+      </p>
       <p className="muted small">
         O acesso de novas contas depende da aprovação de um administrador.
       </p>

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomBytes } from "node:crypto";
 import { submitAccessRequest, manageAccessRequests } from "@/services/access-requests";
 import { ZodError, z } from "zod";
 import { passwordLengthSchema } from "@/schemas/password";
@@ -75,20 +76,23 @@ async function handle(request: Request, context: Context) {
           throw new HttpError(401, "E-mail ou senha inválidos.");
         }
         try {
-          await authorize();
+          const session = await authorize(undefined, { allowPasswordChange: true });
+          return ok({ success: true, redirect: session.mustChangePassword ? "/conta" : "/dashboard" });
         } catch (e) {
           await db.auth.signOut();
           throw e;
         }
-        return ok({ success: true });
       }
       if (id === "password") {
-        await authorize();
+        await authorize(undefined, { allowPasswordChange: true });
         const { password } = z
           .object({ password: passwordLengthSchema })
           .parse(await request.json());
         const { error } = await db.auth.updateUser({ password });
+        if (error?.code === "same_password") throw new HttpError(400, "Escolha uma senha diferente da senha atual.");
         check(error);
+        const completed = await db.rpc("complete_password_change");
+        check(completed.error);
         return ok({ success: true });
       }
       throw new HttpError(404, "Ação não encontrada.");
@@ -393,7 +397,24 @@ async function handle(request: Request, context: Context) {
       admin();
       const capabilities = await db.rpc("user_admin_capabilities");
       check(capabilities.error);
-      const permissions = capabilities.data as { primary_admin_id: string; can_delete: boolean };
+      const permissions = capabilities.data as { protected_user_ids: string[]; can_delete: boolean; can_reset_password: boolean };
+      if (method === "POST" && id && action === "reset-password") {
+        if (!permissions.can_reset_password) throw new HttpError(403, "Seu acesso não permite redefinir senhas.");
+        z.string().uuid().parse(id);
+        const input = z.object({ confirmation_email: z.string().trim().email().max(254) }).strict().parse(await request.json());
+        const started = await db.rpc("begin_password_reset", { target_user_id: id, confirmation_email: input.confirmation_email });
+        if (started.error?.code === "55000") throw new HttpError(429, "Aguarde cinco minutos antes de gerar outra senha para esta conta.");
+        if (started.error?.code === "22023") throw new HttpError(400, "Confira o e-mail e se o acesso está ativo.");
+        check(started.error);
+        const service = adminDatabase();
+        const temporaryPassword = randomBytes(15).toString("base64url") + "aA9!";
+        const changed = await service.auth.admin.updateUserById(id, { password: temporaryPassword });
+        if (changed.error) throw new HttpError(503, "Não foi possível concluir a redefinição. O acesso ficou bloqueado por segurança; tente novamente em cinco minutos.");
+        const finished = await service.rpc("finish_password_reset", { target_user_id: id, reset_request_id: started.data! });
+        if (finished.error) throw new HttpError(503, "A redefinição ficou pendente. Gere outra senha em cinco minutos.");
+        return ok({ temporary_password: temporaryPassword, expires_in_hours: 24 });
+      }
+      if (id || action) throw new HttpError(404, "Ação não encontrada.");
       if (method === "GET") {
         const page = z.coerce
           .number()
@@ -410,9 +431,9 @@ async function handle(request: Request, context: Context) {
         return ok({ data, count, ...permissions });
       }
       if (method === "DELETE") {
-        if (!permissions.can_delete) throw new HttpError(403, "Somente o ADMIN primário pode excluir usuários.");
+        if (!permissions.can_delete) throw new HttpError(403, "Seu acesso não permite excluir usuários.");
         const input = z.object({ id: z.string().uuid(), confirmation_email: z.string().trim().email().max(254) }).strict().parse(await request.json());
-        if (input.id === permissions.primary_admin_id) throw new HttpError(409, "O ADMIN primário não pode ser excluído.");
+        if (permissions.protected_user_ids.includes(input.id)) throw new HttpError(409, "Esta conta está protegida contra exclusão.");
         const deletion = await db.rpc("delete_user_access", { target_user_id: input.id, confirmation_email: input.confirmation_email });
         if (deletion.error?.code === "22023") throw new HttpError(400, "Digite o e-mail do usuário para confirmar a exclusão.");
         if (deletion.error?.code === "P0002") throw new HttpError(404, "Usuário não encontrado.");
@@ -423,8 +444,8 @@ async function handle(request: Request, context: Context) {
         const { id: recordId, ...payload } = profileSchema.parse(
           await request.json(),
         );
-        if (recordId === permissions.primary_admin_id && (!payload.active || payload.role !== "ADMIN"))
-          throw new HttpError(409, "O ADMIN primário deve permanecer ativo e com perfil ADMIN.");
+        if (permissions.protected_user_ids.includes(recordId) && (!payload.active || payload.role !== "ADMIN"))
+          throw new HttpError(409, "Esta conta deve permanecer ativa e com perfil ADMIN.");
         if (
           recordId === profile.id &&
           (!payload.active || payload.role !== "ADMIN")

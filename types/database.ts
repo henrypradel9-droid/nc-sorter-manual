@@ -472,7 +472,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      begin_password_reset: {
+        Args: { confirmation_email: string; target_user_id: string }
+        Returns: string
+      }
       cleanup_jpradel_tests: { Args: { confirmation: string }; Returns: Json }
+      complete_password_change: { Args: never; Returns: boolean }
       dashboard: { Args: { filters?: Json }; Returns: Json }
       dashboard_v2: {
         Args: { bucket_by?: string; filters?: Json }
@@ -522,8 +527,17 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      finish_password_reset: {
+        Args: { reset_request_id: string; target_user_id: string }
+        Returns: boolean
+      }
+      grant_account_admin: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
       normalize_user: { Args: { value: string }; Returns: string }
       occurrence_receipt: { Args: { record_id: string }; Returns: boolean }
+      password_change_state: { Args: never; Returns: Json }
       prepare_official_v2: { Args: never; Returns: Json }
       suggest_users: {
         Args: { prefix: string }

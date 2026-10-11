@@ -1,7 +1,8 @@
 "use client";
 import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2, ShieldCheck } from "lucide-react";
+import { Trash2, KeyRound, Copy } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -202,11 +203,31 @@ function UserDeletion({ item, onClose, onDeleted }: { item: Profile; onClose: ()
   }
   return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}><DialogContent><DialogHeader><DialogTitle>Excluir usuário?</DialogTitle><DialogDescription><strong>{item.name}</strong> perderá o acesso e sairá da lista de usuários. As ocorrências e a auditoria serão preservadas. O acesso excluído não poderá ser reativado nesta tela.</DialogDescription></DialogHeader><form className="stack" onSubmit={remove}><p className="small muted">Para confirmar, digite <strong>{item.email}</strong>.</p><label>E-mail de confirmação<input type="email" required autoComplete="off" value={confirmation} onChange={e => setConfirmation(e.target.value)} disabled={busy} /></label>{error && <p className="error" role="alert">{error}</p>}<div className="form-actions"><button type="button" onClick={onClose} disabled={busy}>Cancelar</button><button className="danger-button" disabled={busy || confirmation.trim().toLowerCase() !== item.email.trim().toLowerCase()}><Trash2 size={16} />{busy ? "Excluindo…" : "Excluir usuário"}</button></div></form></DialogContent></Dialog>;
 }
-export function UsersPage() {
+function PasswordReset({ item, onClose }: { item: Profile; onClose: () => void }) {
+  const [confirmation, setConfirmation] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function reset(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setBusy(true); setError("");
+    try {
+      const result = await api<{ temporary_password: string }>(`users/${item.id}/reset-password`, "POST", { confirmation_email: confirmation.trim() });
+      setPassword(result.temporary_password);
+    } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível redefinir a senha."); }
+    finally { setBusy(false); }
+  }
+  return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}><DialogContent><DialogHeader><DialogTitle>{password ? "Senha temporária gerada" : "Redefinir senha"}</DialogTitle><DialogDescription>{item.name} · {item.email}</DialogDescription></DialogHeader>
+    {password ? <div className="stack"><p className="notice">Válida por 24 horas. A pessoa deverá escolher uma nova senha ao entrar. Esta senha não poderá ser consultada depois de fechar esta janela.</p><label>Senha temporária<input readOnly value={password} autoComplete="off" onFocus={e => e.target.select()} /></label><div className="form-actions"><button onClick={async () => { try { await navigator.clipboard.writeText(password); toast.success("Senha copiada."); } catch { toast.error("Selecione a senha e copie manualmente."); } }}><Copy size={16} />Copiar senha</button><button className="primary" onClick={onClose}>Concluir</button></div></div>
+      : <form className="stack" onSubmit={reset}><p>O acesso será recuperado sem envio de e-mail. As sessões anteriores perderão acesso ao sistema.</p><label>Digite o e-mail da pessoa para confirmar<input type="email" required autoComplete="off" value={confirmation} onChange={e => setConfirmation(e.target.value)} disabled={busy} /></label>{error && <p className="error" role="alert">{error}</p>}<div className="form-actions"><button type="button" onClick={onClose} disabled={busy}>Cancelar</button><button className="primary" disabled={busy || confirmation.trim().toLowerCase() !== item.email.toLowerCase()}><KeyRound size={16} />{busy ? "Gerando…" : "Gerar senha temporária"}</button></div></form>}
+  </DialogContent></Dialog>;
+}
+export function UsersPage({ currentUserId }: { currentUserId: string }) {
   const [page, setPage] = useState(1),
     [edit, setEdit] = useState<Profile | null | undefined>();
   const [remove, setRemove] = useState<Profile | null>(null);
-  const result = useApi<{ data: Profile[]; count: number; primary_admin_id: string; can_delete: boolean }>(
+  const [reset, setReset] = useState<Profile | null>(null);
+  const result = useApi<{ data: Profile[]; count: number; protected_user_ids: string[]; can_delete: boolean; can_reset_password: boolean }>(
     "users?page=" + page,
   );
   return (
@@ -244,10 +265,10 @@ export function UsersPage() {
               {result.data.data.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell><strong className="user-name">{p.name}</strong><span className="user-email">{p.email}</span></TableCell>
-                  <TableCell>{p.id === result.data?.primary_admin_id ? <span className="primary-admin-badge"><ShieldCheck size={14} />ADMIN primário</span> : <span className="user-role">{p.role}</span>}</TableCell>
+                  <TableCell><span className="user-role">{p.role}</span></TableCell>
                   <TableCell><span className={`user-status ${p.active ? "active" : "inactive"}`}>{p.active ? "Ativo" : "Inativo"}</span></TableCell>
                   <TableCell>
-                    <div className="user-actions"><button onClick={() => setEdit(p)}>Editar acesso</button>{result.data?.can_delete && p.id !== result.data?.primary_admin_id && <button className="delete-user-button" title={`Excluir ${p.name}`} aria-label={`Excluir usuário ${p.name}`} onClick={() => setRemove(p)}><Trash2 size={17}/></button>}</div>
+                    <div className="user-actions"><button onClick={() => setEdit(p)}>Editar acesso</button>{result.data?.can_reset_password && p.active && p.id !== currentUserId && <button title={`Redefinir senha de ${p.name}`} aria-label={`Redefinir senha de ${p.name}`} onClick={() => setReset(p)}><KeyRound size={17}/></button>}{result.data?.can_delete && !result.data.protected_user_ids.includes(p.id) && <button className="delete-user-button" title={`Excluir ${p.name}`} aria-label={`Excluir usuário ${p.name}`} onClick={() => setRemove(p)}><Trash2 size={17}/></button>}</div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -267,6 +288,7 @@ export function UsersPage() {
         />
       )}
       {remove && <UserDeletion item={remove} onClose={() => setRemove(null)} onDeleted={() => { setRemove(null); setPage(1); result.refresh(); }} />}
+      {reset && <PasswordReset item={reset} onClose={() => setReset(null)} />}
     </>
   );
 }
@@ -362,7 +384,8 @@ export function AuditPage() {
     </>
   );
 }
-export function AccountPage({ profile }: { profile: Profile }) {
+export function AccountPage({ profile, requiredChange = false }: { profile: Profile; requiredChange?: boolean }) {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -377,6 +400,7 @@ export function AccountPage({ profile }: { profile: Profile }) {
       await api("auth/password", "POST", { password: f.get("password") });
       toast.success("Senha atualizada.");
       form.reset();
+      if (requiredChange) { router.replace("/dashboard"); router.refresh(); }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao alterar senha");
     } finally {
@@ -387,13 +411,14 @@ export function AccountPage({ profile }: { profile: Profile }) {
     <>
       <div className="page-heading">
         <div>
-          <h1>Minha conta</h1>
+          <h1>{requiredChange ? "Escolha sua nova senha" : "Minha conta"}</h1>
           <p>
             {profile.name} · {profile.email} · {profile.role}
           </p>
         </div>
       </div>
       <form className="panel stack max-w-xl" onSubmit={save}>
+        {requiredChange && <p className="notice">Você entrou com uma senha temporária. Defina uma senha pessoal para liberar seu acesso ao NC SORTER.</p>}
         <h2>Definir uma nova senha</h2>
         <label>
           Nova senha
@@ -422,6 +447,7 @@ export function AccountPage({ profile }: { profile: Profile }) {
           {busy ? "Salvando…" : "Salvar senha"}
         </button>
       </form>
+      {requiredChange && <button className="mt-4" disabled={busy} onClick={async () => { try { await api("auth/logout", "POST"); router.replace("/login"); router.refresh(); } catch { toast.error("Não foi possível sair. Tente novamente."); } }}>Sair da conta</button>}
     </>
   );
 }

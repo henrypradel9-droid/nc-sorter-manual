@@ -9,9 +9,10 @@ export default async function PrivateLayout({
   children: React.ReactNode;
 }) {
   if (!configured()) redirect("/login");
-  const { profile } = await authorize().catch((e) => {
+  const { profile, mustChangePassword } = await authorize(undefined, { allowPasswordChange: true }).catch((e) => {
     if (e instanceof HttpError) redirect("/login");
     throw e;
   });
+  if (mustChangePassword) return <main className="mx-auto max-w-2xl p-6">{children}</main>;
   return <Shell profile={profile}>{children}</Shell>;
 }

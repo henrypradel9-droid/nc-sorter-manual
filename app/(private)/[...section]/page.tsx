@@ -25,13 +25,17 @@ export default async function Page({
   params: Promise<{ section: string[] }>;
 }) {
   if (!configured()) redirect("/login");
-  const session = await authorize().catch((e) => {
+  const session = await authorize(undefined, { allowPasswordChange: true }).catch((e) => {
     if (e instanceof HttpError) redirect("/login");
     throw e;
   });
   const { profile } = session;
   const { section } = await params;
   const [page, id] = section;
+  if (session.mustChangePassword) {
+    if (page !== "conta" || id) redirect("/conta");
+    return <AccountPage profile={profile} requiredChange />;
+  }
   let content;
   if (profile.role !== "ADMIN" && !["dashboard", "ocorrencias", "alertas", "conta"].includes(page))
     redirect("/ocorrencias/nova");
@@ -77,7 +81,7 @@ export default async function Page({
       content = <CatalogPage table={id} />;
       break;
     case "usuarios":
-      content = <UsersPage />;
+      content = <UsersPage currentUserId={profile.id} />;
       break;
     case "auditoria":
       content = <AuditPage />;
