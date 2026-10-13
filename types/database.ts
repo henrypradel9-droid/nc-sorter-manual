@@ -496,6 +496,10 @@ export type Database = {
         Args: { confirmation_email: string; target_user_id: string }
         Returns: Json
       }
+      delete_occurrence: {
+        Args: { expected_version: number; target_occurrence_id: string }
+        Returns: boolean
+      }
       export_occurrences: { Args: { filters?: Json }; Returns: Json }
       filtered_occurrences: {
         Args: { filters?: Json }

@@ -107,7 +107,7 @@ async function handle(request: Request, context: Context) {
         throw new HttpError(403, "Acesso reservado à administração.");
     };
     if (profile.role !== "ADMIN" && !(
-      (resource === "occurrences" && (method === "GET" || (method === "POST" && !id))) ||
+      (resource === "occurrences" && (method === "GET" || (method === "POST" && !id) || (method === "DELETE" && !!id && !action))) ||
       (resource === "alerts" && method === "GET" && !id) ||
       (["lookups", "suggestions", "me", "dashboard", "dashboard-v2"].includes(resource) && method === "GET" && !id)
     )) throw new HttpError(403, "Acesso reservado à administração.");
@@ -172,7 +172,12 @@ async function handle(request: Request, context: Context) {
         check(history.error);
         const pastAlerts = await db.from("alerts").select("id", {count:"exact",head:true}).eq("occurrence_user", data.occurrence_user_normalized ?? data.occurrence_user.trim().toLowerCase()).or("status.eq.ACOMPANHAMENTO_REALIZADO,active.eq.false");
         check(pastAlerts.error);
-        return ok({ occurrence: data, history: history.data, alert_count: pastAlerts.count ?? 0 });
+        return ok({
+          occurrence: data,
+          history: history.data,
+          alert_count: pastAlerts.count ?? 0,
+          can_delete: profile.role === "ADMIN" || data.registered_by_user_id === profile.id,
+        });
       }
       if (method === "GET") {
         const filters = filtersFrom(url);
@@ -183,6 +188,20 @@ async function handle(request: Request, context: Context) {
         );
         check(error);
         return ok({ data, count });
+      }
+      if (method === "DELETE" && id) {
+        const input = z.object({ version: z.number().int().positive() }).strict().parse(await request.json());
+        const deleted = await db.rpc("delete_occurrence", {
+          target_occurrence_id: id,
+          expected_version: input.version,
+        });
+        if (deleted.error?.code === "P0002") throw new HttpError(404, "Ocorrência não encontrada.");
+        if (deleted.error?.code === "40001")
+          throw new HttpError(409, "Esta ocorrência foi alterada por outra pessoa. Reabra os detalhes antes de apagar.");
+        if (deleted.error?.code === "42501")
+          throw new HttpError(403, "Você só pode apagar uma ocorrência registrada por você.");
+        check(deleted.error);
+        return ok({ success: true });
       }
       if (method === "POST" || method === "PATCH") {
         const input = occurrenceSchema.parse(await request.json());

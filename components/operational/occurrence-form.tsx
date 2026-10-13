@@ -1,7 +1,9 @@
 "use client";
 import { useState, useEffect, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Clock3, CheckCircle2, Plus } from "lucide-react";
+import { Clock3, CheckCircle2, Plus, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -355,11 +357,25 @@ export function OccurrenceForm({
     </>
   );
 }
+function OccurrenceDeletion({ occurrence, onClose }: { occurrence: Occurrence; onClose: () => void }) {
+  const router = useRouter();
+  const [confirmation, setConfirmation] = useState(""), [busy, setBusy] = useState(false), [error, setError] = useState("");
+  async function remove(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault(); setBusy(true); setError("");
+    try {
+      await api(`occurrences/${occurrence.id}`, "DELETE", { version: occurrence.version });
+      toast.success("Ocorrência apagada. A auditoria foi preservada.");
+      router.replace("/ocorrencias"); router.refresh();
+    } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível apagar a ocorrência."); setBusy(false); }
+  }
+  return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}><DialogContent><DialogHeader><DialogTitle>Apagar ocorrência?</DialogTitle><DialogDescription>Esta ação remove a ocorrência da central e recalcula os alertas relacionados. O registro da exclusão ficará na auditoria.</DialogDescription></DialogHeader><form className="stack" onSubmit={remove}><p className="small muted">Para confirmar, digite <strong>APAGAR</strong>.</p><label>Confirmação<input required autoComplete="off" value={confirmation} onChange={e => setConfirmation(e.target.value)} disabled={busy} /></label>{error && <p className="error" role="alert">{error}</p>}<div className="form-actions"><button type="button" onClick={onClose} disabled={busy}>Cancelar</button><button className="danger-button" disabled={busy || confirmation !== "APAGAR"}><Trash2 size={16}/>{busy ? "Apagando…" : "Apagar ocorrência"}</button></div></form></DialogContent></Dialog>;
+}
 export function OccurrenceDetail({ id, role }: { id: string; role: Role }) {
-  const result = useApi<{ occurrence: Occurrence; history: Audit[]; alert_count: number }>(
+  const result = useApi<{ occurrence: Occurrence; history: Audit[]; alert_count: number; can_delete: boolean }>(
       "occurrences/" + id,
     ),
-    [editing, setEditing] = useState(false);
+    [editing, setEditing] = useState(false),
+    [removing, setRemoving] = useState(false);
   const o = result.data?.occurrence;
   return (
     <>
@@ -368,11 +384,7 @@ export function OccurrenceDetail({ id, role }: { id: string; role: Role }) {
           <h1>Detalhes da ocorrência</h1>
           <p>Dados do registro e histórico de alterações.</p>
         </div>
-        {role === "ADMIN" && (
-          <button onClick={() => setEditing((v) => !v)}>
-            {editing ? "Cancelar edição" : "Editar ocorrência"}
-          </button>
-        )}
+        <div className="form-actions">{role === "ADMIN" && <button onClick={() => setEditing((v) => !v)}>{editing ? "Cancelar edição" : "Editar ocorrência"}</button>}{o && result.data?.can_delete && <button className="danger-button" onClick={() => setRemoving(true)}><Trash2 size={16}/>Apagar ocorrência</button>}</div>
       </div>
       <State
         loading={result.loading}
@@ -439,6 +451,7 @@ export function OccurrenceDetail({ id, role }: { id: string; role: Role }) {
           ))}
         </section>
       )}
+      {o && removing && <OccurrenceDeletion occurrence={o} onClose={() => setRemoving(false)} />}
     </>
   );
 }

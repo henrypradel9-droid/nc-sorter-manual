@@ -22,7 +22,7 @@ test("delegated account recovery enforces permissions, mandatory change, expiry 
       await db.query("insert into auth.users(id,email,encrypted_password) values($1,$2,'original-hash')", [id,`person${i}@example.test`]);
       await db.query("insert into profiles(id,name,email,role,active,created_at) values($1,$2,$3,$4,true,$5)", [id,`Person ${i}`,`person${i}@example.test`,i<3?'ADMIN':'OPERADOR',`2026-10-0${i+1}T12:00Z`]);
     }
-    for (const name of ["access-requests-dashboard", "primary-admin-user-deletion", "official-v2", "compact-menu-operator-read", "operator-dashboard", "operator-shared-dashboard", "account-admin-password-recovery"])
+    for (const name of ["access-requests-dashboard", "primary-admin-user-deletion", "official-v2", "compact-menu-operator-read", "operator-dashboard", "operator-shared-dashboard", "account-admin-password-recovery", "occurrence-deletion"])
       await db.exec(await readFile(new URL(`../db/${name}.sql`, import.meta.url), "utf8"));
     const as = async (id: string, session = "", role = "authenticated") => {
       await db.exec("reset role");
@@ -85,6 +85,32 @@ test("delegated account recovery enforces permissions, mandatory change, expiry 
     await db.query("select complete_password_change()");
     assert.deepEqual(await state(),{required:false,session_valid:true});
     assert.equal(await role(),"OPERADOR");
+    const inserted: string[] = [];
+    for (let i=1;i<=5;i++) {
+      const id=`30000000-0000-4000-8000-${String(i).padStart(12,"0")}`;
+      inserted.push(id);
+      await db.query(`insert into public.occurrences(id,occurred_at,occurrence_user,package_quantity,error_type_id,shift_id,canalizacao,status)
+        select $1,now(),'Operador com erro',1,(select id from public.error_types limit 1),(select id from public.shifts limit 1),'Canal A','PENDENTE'`,[id]);
+    }
+    assert.equal(Number((await db.query<{n:number}>("select count(*) n from public.alerts where occurrence_user='operador com erro' and active")).rows[0].n),1);
+    await as(owner);
+    const adminOccurrence="30000000-0000-4000-8000-000000000006";
+    await db.query(`insert into public.occurrences(id,occurred_at,occurrence_user,package_quantity,error_type_id,shift_id,canalizacao,status)
+      select $1,now(),'Registro administrativo',1,(select id from public.error_types limit 1),(select id from public.shifts limit 1),'Canal A','PENDENTE'`,[adminOccurrence]);
+    await as(operator,newSession);
+    await assert.rejects(db.query("delete from public.occurrences where id=$1",[inserted[0]]),/permission denied/);
+    await assert.rejects(db.query("select public.delete_occurrence($1,$2)",[adminOccurrence,1]),/Only the author or an administrator/);
+    await assert.rejects(db.query("select public.delete_occurrence($1,$2)",[inserted[4],2]),/Occurrence was changed/);
+    await db.query("select public.delete_occurrence($1,$2)",[inserted[4],1]);
+    assert.equal(Number((await db.query<{n:number}>("select count(*) n from public.occurrences where id=$1",[inserted[4]])).rows[0].n),0);
+    await as(owner);
+    const recalculated=(await db.query<{active:boolean;occurrence_count:number}>("select active,occurrence_count from public.alerts where occurrence_user='operador com erro'")).rows[0];
+    assert.deepEqual(recalculated,{active:false,occurrence_count:4});
+    const deletionAudit=(await db.query<{old_data:{id:string};new_data:unknown}>("select old_data,new_data from public.audit_logs where action='OCORRENCIA_EXCLUIDA' and record_id=$1",[inserted[4]])).rows[0];
+    assert.equal(deletionAudit.old_data.id,inserted[4]);
+    assert.equal(deletionAudit.new_data,null);
+    await db.query("select public.delete_occurrence($1,$2)",[adminOccurrence,1]);
+    assert.equal(Number((await db.query<{n:number}>("select count(*) n from public.occurrences where id=$1",[adminOccurrence])).rows[0].n),0);
     await as(operator,oldSession);
     assert.equal(await role(),null);
     assert.equal((await state()).session_valid,false);
