@@ -84,6 +84,7 @@ export type Audit = {
 };
 export type Alert = {
   id: string;
+  milestone?: number | null;
   occurrence_user: string;
   occurrence_count: number;
   period_start: string;

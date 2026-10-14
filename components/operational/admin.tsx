@@ -42,10 +42,11 @@ function SettingsForm({ settings }: { settings: Settings }) {
   }
   return (
     <form onSubmit={save} className="panel stack max-w-2xl">
-      <h2>Reincidência por dia operacional</h2>
+      <h2>Reincidência acumulada</h2>
       <p className="muted">
-        Um alerta é gerado quando a quantidade de ocorrências é maior que o
-        limite. A contagem considera o Usuário da ocorrência.
+        A contagem soma as ocorrências do colaborador entre todos os dias.
+        Com limite 4, um novo alerta é gerado nos marcos de 5, 10, 15 e assim por diante.
+        Concluir um acompanhamento preserva o histórico e não zera a contagem.
       </p>
       <label>
         Limite de reincidência

@@ -61,7 +61,7 @@ function AlertDetail({
         <DialogHeader>
           <DialogTitle>Acompanhamento operacional</DialogTitle>
           <DialogDescription>
-            Registre a ação ou orientação realizada para este período.
+            Registre a ação ou orientação realizada para este marco acumulado.
           </DialogDescription>
         </DialogHeader>
         <State
@@ -73,6 +73,7 @@ function AlertDetail({
           <>
             <strong>
               {a.occurrence_user} · {a.occurrence_count} ocorrências
+              {a.milestone ? ` · Marco de ${a.milestone}` : ""}
             </strong>
             <p className="small muted">
               {displayDate(a.period_start)} até {displayDate(a.period_end)} ·{" "}
@@ -133,6 +134,6 @@ export function Alerts({historyMode=false,canManage=true}:{historyMode?:boolean;
     <div className="flex gap-3 mb-5"><button className={!history?"primary":""} aria-pressed={!history} onClick={()=>{setHistory(false);setPage(1);}}>Ativos</button><button className={history?"primary":""} aria-pressed={history} onClick={()=>{setHistory(true);setPage(1);}}>Histórico</button></div>
     <div className="panel filters"><label>Usuário<input value={filters.occurrence_user} maxLength={100} placeholder="Usuário exato" onChange={e=>change("occurrence_user",e.target.value)}/></label><label>De<input type="date" value={filters.from} onChange={e=>change("from",e.target.value)}/></label><label>Até<input type="date" value={filters.to} onChange={e=>change("to",e.target.value)}/></label><label>Status<select value={filters.status} onChange={e=>change("status",e.target.value)}><option value="">Todos</option>{Object.entries(labels).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>{canManage && <label>Responsável pelo acompanhamento<select value={filters.responsible} onChange={e=>change("responsible",e.target.value)}><option value="">Todos</option>{lookups.data?.profiles.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}</div>
     <State loading={result.loading} error={result.error} retry={result.refresh}/>
-    {result.data&&<><div className="alert-grid">{result.data.data.map(a=>{const latest=[...(a.follow_ups??[])].sort((x,y)=>y.created_at.localeCompare(x.created_at))[0];return <article className="panel alert-card" key={a.id}><div className="flex justify-between gap-4"><strong>{a.occurrence_user}</strong><span className="badge PENDENTE">{labels[a.status]}</span></div><span>{a.occurrence_count} ocorrências no período</span><div className="alert-meta"><span>Erro mais frequente<br/><strong className="text-sm!">{a.most_frequent_error}</strong></span><span>Turnos<br/>{a.shifts.join(", ")}</span></div><small className="muted">Data do alerta: {displayDate(a.created_at)}<br/>Período: {displayDate(a.period_start)} – {displayDate(a.period_end)}<br/>{canManage && (latest?<>Acompanhamento: {displayDate(latest.created_at)}<br/>Responsável: {latest.responsible?.name??"—"}</>:"Sem acompanhamento registrado.")}</small>{canManage && <button onClick={()=>open(a)}>Ver detalhes e acompanhamento</button>}</article>;})}</div>{!result.data.data.length&&<Empty text={history?"Nenhum alerta no histórico para estes filtros.":"Nenhum alerta aguardando acompanhamento."}/>}<Pager page={page} total={result.data.count} onChange={setPage}/></>}
+    {result.data&&<><div className="alert-grid">{result.data.data.map(a=>{const latest=[...(a.follow_ups??[])].sort((x,y)=>y.created_at.localeCompare(x.created_at))[0];return <article className="panel alert-card" key={a.id}><div className="flex justify-between gap-4"><strong>{a.occurrence_user}</strong><span className="badge PENDENTE">{labels[a.status]}</span></div><span>{a.occurrence_count} ocorrências acumuladas{a.milestone ? ` · Marco de ${a.milestone}` : ""}</span><div className="alert-meta"><span>Erro mais frequente<br/><strong className="text-sm!">{a.most_frequent_error}</strong></span><span>Turnos<br/>{a.shifts.join(", ")}</span></div><small className="muted">Data do alerta: {displayDate(a.created_at)}<br/>Período: {displayDate(a.period_start)} – {displayDate(a.period_end)}<br/>{canManage && (latest?<>Acompanhamento: {displayDate(latest.created_at)}<br/>Responsável: {latest.responsible?.name??"—"}</>:"Sem acompanhamento registrado.")}</small>{canManage && <button onClick={()=>open(a)}>Ver detalhes e acompanhamento</button>}</article>;})}</div>{!result.data.data.length&&<Empty text={history?"Nenhum alerta no histórico para estes filtros.":"Nenhum alerta aguardando acompanhamento."}/>}<Pager page={page} total={result.data.count} onChange={setPage}/></>}
     {canManage&&selected&&<AlertDetail id={selected} onClose={()=>setSelected(undefined)} onSaved={result.refresh}/>}</>;
 }
