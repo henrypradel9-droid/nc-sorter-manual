@@ -6,7 +6,7 @@ export async function POST(request: Request) {
   const secret = process.env.CRON_SECRET;
   const authorization = request.headers.get("authorization") ?? "";
   const expected = `Bearer ${secret}`;
-  if (!secret || authorization.length !== expected.length || !timingSafeEqual(Buffer.from(authorization), Buffer.from(expected))) {
+  if (!secret || Buffer.byteLength(authorization) !== Buffer.byteLength(expected) || !timingSafeEqual(Buffer.from(authorization), Buffer.from(expected))) {
     return Response.json({error:"Unauthorized"}, {status:401});
   }
   try {

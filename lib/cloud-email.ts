@@ -108,7 +108,7 @@ export async function runEmailJob(mode:"scheduled"|"test"="scheduled") {
   const end=new Date(); const start=new Date(end.getTime()-7*86400000);
   const mail=await reportMail(start.toISOString(),end.toISOString());
   mail.subject="TESTE EM NUVEM — "+mail.subject;
-  return {sent:await deliver("cloud-test-v1",mail,["henrypradel9@gmail.com"])};
+  return {sent:await deliver("cloud-test:"+(process.env.VERCEL_DEPLOYMENT_ID??"local-v1"),mail,["henrypradel9@gmail.com"])};
  }
  // Feature switch prevents sends until SMTP and the production test are verified.
  if(process.env.EMAIL_AUTOMATION_ENABLED!=="true") return {disabled:true,sent:0};
