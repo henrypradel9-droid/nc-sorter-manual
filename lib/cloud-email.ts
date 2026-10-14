@@ -112,19 +112,22 @@ export async function runEmailJob(mode:"scheduled"|"test"="scheduled") {
  }
  // Feature switch prevents sends until SMTP and the production test are verified.
  if(process.env.EMAIL_AUTOMATION_ENABLED!=="true") return {disabled:true,sent:0};
- let sent=0;
+ let sent=0; let failures=0;
  const alerts=(await allRows("alerts","*")).filter(a=>a.active && a.status!=="ACOMPANHAMENTO_REALIZADO");
  for(const a of alerts) {
   const snapshot={id:a.id,collaborator:a.occurrence_user,milestone:a.milestone,count:a.occurrence_count,error:a.most_frequent_error,shifts:a.shifts,last:a.last_occurrence,status:a.status};
-  sent+=await deliver("alert:"+hash(snapshot),{subject:`NC SORTER — Alerta: ${a.occurrence_user} — marco ${a.milestone}`,
+  try { sent+=await deliver("alert:"+hash(snapshot),{subject:`NC SORTER — Alerta: ${a.occurrence_user} — marco ${a.milestone}`,
    html:`<h1>Alerta de reincidência</h1><p>Colaborador: <strong>${escape(a.occurrence_user)}</strong></p><p>Marco: ${escape(a.milestone)} · Ocorrências: ${escape(a.occurrence_count)}</p><p>Erro mais frequente: ${escape(a.most_frequent_error)}</p><p>Turnos: ${escape((a.shifts as string[]).join(", "))}</p><p>Última ocorrência do marco: ${escape(date(String(a.last_occurrence)))}</p><p>Status: ${escape(a.status)}</p><p><a href="https://nc-sorter-manual.vercel.app/alertas">Abrir NC SORTER</a></p>`});
+  } catch { failures++; }
  }
  // Brazil uses UTC-3. Run Sunday from 08:00 onward; stable key allows safe catch-up that day.
  const now=new Date(); const local=new Date(now.getTime()-3*3600000);
  if(local.getUTCDay()===0 && local.getUTCHours()>=8) {
   const end=new Date(Date.UTC(local.getUTCFullYear(),local.getUTCMonth(),local.getUTCDate(),11));
   const start=new Date(end.getTime()-7*86400000);
-  sent+=await deliver("weekly:"+end.toISOString(),await reportMail(start.toISOString(),end.toISOString()));
+  try { sent+=await deliver("weekly:"+end.toISOString(),await reportMail(start.toISOString(),end.toISOString())); }
+  catch { failures++; }
  }
+ if(failures) throw new Error("EMAIL_DELIVERY_FAILURES_REVIEW_REQUIRED");
  return {sent};
 }
