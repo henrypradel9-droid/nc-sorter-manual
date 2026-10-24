@@ -5,8 +5,10 @@ Production runs on Vercel; Supabase pg_cron invokes the authenticated POST endpo
 `nc-sorter-cloud-email`. No local computer is needed.
 
 - Sender: henrypradel9@gmail.com through Gmail SMTP.
-- Recipients: werles.ldias@mercadolivre.com and amandafer.nascimento@mercadolivre.com.
-- Alert changes: deduplicated by meaningful alert fields and recipient.
+- Recipients: henrypradel9@gmail.com, werles.ldias@mercadolivre.com and amandafer.nascimento@mercadolivre.com.
+- Alert changes: an after-write database trigger dispatches immediately after commit;
+  the 15-minute job is a fallback. Technical timestamp-only changes do not dispatch.
+  Emails are deduplicated by meaningful alert fields and recipient.
 - Weekly report: Sunday 08:00 America/Sao_Paulo (11:00 UTC), with a fixed previous
   seven-day window. Later Sunday runs can catch up, without resending confirmed mail.
 - Full CSV includes all paginated occurrence records in the report window.

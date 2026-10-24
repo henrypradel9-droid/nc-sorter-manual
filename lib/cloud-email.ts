@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 
-const recipients = ["werles.ldias@mercadolivre.com", "amandafer.nascimento@mercadolivre.com"];
+const recipients = ["henrypradel9@gmail.com", "werles.ldias@mercadolivre.com", "amandafer.nascimento@mercadolivre.com"];
 const escape = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]!);
 const date = (v: string) => new Date(v).toLocaleString("pt-BR", { timeZone:"America/Sao_Paulo" });
 const hash = (v: unknown) => createHash("sha256").update(JSON.stringify(v)).digest("hex");
