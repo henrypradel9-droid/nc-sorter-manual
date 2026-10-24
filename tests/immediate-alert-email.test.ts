@@ -6,7 +6,7 @@ test("immediate email ignores technical changes and keeps writes working during 
  const db=new PGlite();
  try{
  await db.exec(`create schema private; create role anon; create role authenticated;
- create table calls(id integer); create function private.dispatch_email_job() returns bigint language plpgsql as $$begin insert into calls values(1); return 1; end$$;
+ create table calls(id integer); create function private.dispatch_email_job() returns bigint language plpgsql as $$begin insert into public.calls values(1); return 1; end$$;
  create table public.alerts(occurrence_user text,milestone integer,occurrence_count integer,most_frequent_error text,shifts text[],last_occurrence timestamptz,status text,active boolean,updated_at timestamptz);`);
  await db.exec(await readFile(new URL("../supabase/migrations/20261024011750_immediate_alert_email.sql",import.meta.url),"utf8"));
  const count=async()=>Number((await db.query<{n:number}>("select count(*) n from calls")).rows[0].n);
